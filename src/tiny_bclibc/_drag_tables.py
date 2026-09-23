@@ -4,7 +4,9 @@ Copied from micropython-bclibc (src/drag_tables.h, via ffimod/_tiny_bclibc.py), 
 matches py_ballisticcalc's TableG1/TableG7. Keep in sync with those if either changes.
 """
 
-G7_MACH = (
+from typing import Final
+
+G7_MACH: Final[tuple[float, ...]] = (
     0.00,
     0.05,
     0.10,
@@ -91,7 +93,7 @@ G7_MACH = (
     5.00,
 )
 
-G7_CD = (
+G7_CD: Final[tuple[float, ...]] = (
     0.1198,
     0.1197,
     0.1196,
@@ -178,7 +180,7 @@ G7_CD = (
     0.1618,
 )
 
-G1_MACH = (
+G1_MACH: Final[tuple[float, ...]] = (
     0.00,
     0.05,
     0.10,
@@ -260,7 +262,7 @@ G1_MACH = (
     5.00,
 )
 
-G1_CD = (
+G1_CD: Final[tuple[float, ...]] = (
     0.2629,
     0.2558,
     0.2487,

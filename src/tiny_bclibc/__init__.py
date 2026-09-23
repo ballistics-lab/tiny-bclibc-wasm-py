@@ -17,9 +17,12 @@ available: JavaScriptCore's JSContext in Pythonista, `wasmtime` or Node on a des
 Differences from the natmod, all at the storage level (results use the same C code):
     - Shot/Wind/Config/Request keep their fields as Python floats, not float32 bytearrays, so a
       double-precision module sees full-precision inputs. They are still `(buf, s)`-shaped
-      namedtuples with the fields on `.s` (`shot.s.props.barrel_elevation_rad`, `w.s.velocity_fps`,
+      named tuples with the fields on `.s` (`shot.s.props.barrel_elevation_rad`, `w.s.velocity_fps`,
       `cfg.s.max_iterations`, ...); `buf` is None.
     - No bench() (a native FPU benchmark means nothing through a WebAssembly host).
+
+Typing: fully annotated (Python 3.10 syntax, which Pythonista runs); the public surface is also
+described by __init__.pyi, checked against this module with mypy's stubtest.
 
 Configuration (environment variables, read on first use):
     TINY_BCLIBC_PRECISION   double (default) | single -- which .wasm to load
@@ -30,7 +33,9 @@ Configuration (environment variables, read on first use):
 
 import os
 import struct as _struct
-from collections import namedtuple as _namedtuple
+from collections.abc import Callable, Iterable, Sequence
+from dataclasses import dataclass
+from typing import Final, NamedTuple, TypeAlias
 
 from . import _drag_tables
 from ._runner import HOSTS, TbwError, WasmRunner, default_runner
@@ -94,63 +99,76 @@ __all__ = [
 ]
 
 # ── Constants (same values as natmod's _tiny_bclibc) ──────────────────────────
-DRAG_G1 = 0
-DRAG_G7 = 1
-DRAG_CUSTOM = 2
+DRAG_G1: Final = 0
+DRAG_G7: Final = 1
+DRAG_CUSTOM: Final = 2
 
-TRAJ_FLAG_NONE = 0
-TRAJ_FLAG_ZERO_UP = 1
-TRAJ_FLAG_ZERO_DOWN = 2
-TRAJ_FLAG_ZERO = 3
-TRAJ_FLAG_MACH = 4
-TRAJ_FLAG_RANGE = 8
-TRAJ_FLAG_APEX = 16
-TRAJ_FLAG_MRT = 32
-TRAJ_FLAG_ALL = 31
+TRAJ_FLAG_NONE: Final = 0
+TRAJ_FLAG_ZERO_UP: Final = 1
+TRAJ_FLAG_ZERO_DOWN: Final = 2
+TRAJ_FLAG_ZERO: Final = 3
+TRAJ_FLAG_MACH: Final = 4
+TRAJ_FLAG_RANGE: Final = 8
+TRAJ_FLAG_APEX: Final = 16
+TRAJ_FLAG_MRT: Final = 32
+TRAJ_FLAG_ALL: Final = 31
 
-T_TIME = 0
-T_DISTANCE = 1
-T_VELOCITY = 2
-T_MACH = 3
-T_HEIGHT = 4
-T_SLANT_HEIGHT = 5
-T_DROP_ANGLE = 6
-T_WINDAGE = 7
-T_WINDAGE_ANGLE = 8
-T_SLANT_DISTANCE = 9
-T_ANGLE = 10
-T_DENSITY_RATIO = 11
-T_DRAG = 12
-T_ENERGY = 13
-T_OGW = 14
-T_FLAG = 15
+T_TIME: Final = 0
+T_DISTANCE: Final = 1
+T_VELOCITY: Final = 2
+T_MACH: Final = 3
+T_HEIGHT: Final = 4
+T_SLANT_HEIGHT: Final = 5
+T_DROP_ANGLE: Final = 6
+T_WINDAGE: Final = 7
+T_WINDAGE_ANGLE: Final = 8
+T_SLANT_DISTANCE: Final = 9
+T_ANGLE: Final = 10
+T_DENSITY_RATIO: Final = 11
+T_DRAG: Final = 12
+T_ENERGY: Final = 13
+T_OGW: Final = 14
+T_FLAG: Final = 15
 
-INTERP_TIME = 0
-INTERP_MACH = 1
-INTERP_POS_X = 2
-INTERP_POS_Y = 3
-INTERP_POS_Z = 4
-INTERP_VEL_X = 5
-INTERP_VEL_Y = 6
-INTERP_VEL_Z = 7
+INTERP_TIME: Final = 0
+INTERP_MACH: Final = 1
+INTERP_POS_X: Final = 2
+INTERP_POS_Y: Final = 3
+INTERP_POS_Z: Final = 4
+INTERP_VEL_X: Final = 5
+INTERP_VEL_Y: Final = 6
+INTERP_VEL_Z: Final = 7
 
-_NaN = float("nan")
-_INF = 1e8  # TINY_BCLIBC_MAX_WIND_DIST_FT
-_MAX_WINDS = 16
-_MAX_DRAG_PTS = 200
-_TERM_HANDLER_STOP = 5
+_NaN: Final = float("nan")
+_INF: Final = 1e8  # TINY_BCLIBC_MAX_WIND_DIST_FT
+_MAX_WINDS: Final = 16
+_MAX_DRAG_PTS: Final = 200
+_TERM_HANDLER_STOP: Final = 5
 
 # tiny_bclibc_wasm.c output layout
-_ROW = 16
-_INTEGRATE_HEADER = 12
-_AT_HEADER = 9
+_ROW: Final = 16
+_INTEGRATE_HEADER: Final = 12
+_AT_HEADER: Final = 9
+
+# ── Types ─────────────────────────────────────────────────────────────────────
+
+# One TrajectoryData row, indexed by the T_* constants: 15 floats, then the int TRAJ_FLAG_* flag.
+Row: TypeAlias = tuple[
+    float, float, float, float, float, float, float, float, float, float, float, float, float, float, float, int
+]
+# BaseTrajData: (time, px, py, pz, vx, vy, vz, mach).
+RawState: TypeAlias = tuple[float, float, float, float, float, float, float, float]
+# A custom drag column: a packed float32 buffer (what MultiBC() returns) or a plain sequence.
+DragColumn: TypeAlias = Sequence[float] | bytes | bytearray | memoryview
+
 
 # ── Module loading ────────────────────────────────────────────────────────────
-_HERE = os.path.dirname(os.path.abspath(__file__))
-_active = None  # the loaded WasmRunner (named so it can't shadow the _runner submodule)
+_HERE: Final = os.path.dirname(os.path.abspath(__file__))
+_active: WasmRunner | None = None  # the loaded host (named so it can't shadow the _runner submodule)
+_host_choice: str | WasmRunner | None = None
 
 
-def _get_runner():
+def _get_runner() -> WasmRunner:
     global _active
     if _active is None:
         single = os.environ.get("TINY_BCLIBC_PRECISION", "double").lower().startswith("s")
@@ -169,17 +187,14 @@ def _get_runner():
     return _active
 
 
-def _call(what, export, inputs, *args):
+def _call(what: str, export: str, inputs: Sequence[float], *args: float) -> list[float]:
     try:
         return _get_runner().call(export, inputs, *args)
     except TbwError as exc:
         raise ValueError(f"{what} rc={exc.status}: {exc.message}") from None
 
 
-_host_choice = None
-
-
-def _pick_host():
+def _pick_host() -> WasmRunner:
     if _host_choice is None:
         return default_runner()
     if isinstance(_host_choice, WasmRunner):
@@ -187,7 +202,7 @@ def _pick_host():
     return HOSTS[_host_choice]()
 
 
-def set_host(host):
+def set_host(host: str | WasmRunner | None) -> None:
     """Choose the WebAssembly host before (or instead of) the automatic pick.
 
     ``host`` is a name ("jscontext", "gi-jsc", "node", "wasmtime"), a ready WasmRunner instance, or
@@ -200,39 +215,126 @@ def set_host(host):
     _active = None
 
 
-def version():
+def version() -> str:
     """tiny_bclibc version of the loaded module, e.g. "2.0.0-rc.1-dp" (natmod: "<ver>-sp")."""
     return _get_runner().version
 
 
-def host():
+def host() -> str:
     """Name of the WebAssembly host in use: jscontext, gi-jsc, node or wasmtime."""
     return _get_runner().name
 
 
 # ── Value objects ─────────────────────────────────────────────────────────────
+# The `.s` side of natmod's `(buf, s)` pairs: there a uctypes struct view over a float32 buffer,
+# here a plain typed record with the same field names.
 
 
-class _Fields:
-    """Attribute bag standing in for natmod's uctypes struct views (`.s`)."""
-
-    def __init__(self, **kw):
-        self.__dict__.update(kw)
-
-    def __repr__(self):
-        return "{}({})".format(type(self).__name__, ", ".join(f"{k}={v!r}" for k, v in self.__dict__.items()))
+@dataclass(slots=True)
+class WindFields:
+    velocity_fps: float
+    direction_from_rad: float
+    until_distance_ft: float
+    max_distance_ft: float
 
 
-_Wind = _namedtuple("Wind", ("buf", "s"))
-_Config = _namedtuple("Config", ("buf", "s"))
-_Shot = _namedtuple("Shot", ("buf", "s", "holder"))
-_Request = _namedtuple("Request", ("buf", "s", "traj"))
+@dataclass(slots=True)
+class ConfigFields:
+    step_multiplier: float
+    zero_finding_accuracy: float
+    minimum_velocity: float
+    maximum_drop: float
+    max_iterations: int
+    gravity_constant: float
+    minimum_altitude: float
 
 
-def Wind(velocity_fps=0.0, direction_from_rad=0.0, until_distance_ft=_INF, max_distance_ft=_INF):
-    return _Wind(
+@dataclass(slots=True)
+class ShotProps:
+    bc: float
+    weight_grain: float
+    diameter_inch: float
+    length_inch: float
+    muzzle_velocity_fps: float
+    sight_height_ft: float
+    twist_inch: float
+    temp_c: float
+    pressure_hpa: float
+    altitude_ft: float
+    humidity: float
+    look_angle_rad: float
+    barrel_elevation_rad: float
+    barrel_azimuth_rad: float
+    cant_angle_rad: float
+    latitude_deg: float
+    azimuth_deg: float
+
+
+@dataclass(slots=True)
+class ShotFields:
+    props: ShotProps
+    cfg: ConfigFields
+    drag_type: int
+    winds: list[WindFields]
+    drag_mach: list[float] | None  # custom drag table (DRAG_CUSTOM), else None
+    drag_cd: list[float] | None
+
+    @property
+    def wind_count(self) -> int:
+        return len(self.winds)
+
+    @property
+    def drag_count(self) -> int:
+        return len(self.drag_mach) if self.drag_mach else 0
+
+
+@dataclass(slots=True)
+class RequestFields:
+    range_limit_ft: float
+    range_step_ft: float
+    time_step: float
+    filter_flags: int
+
+
+class WindData(NamedTuple):
+    """What Wind() returns (natmod's `Wind` namedtuple)."""
+
+    buf: None
+    s: WindFields
+
+
+class ConfigData(NamedTuple):
+    """What Config() returns (natmod's `Config` namedtuple)."""
+
+    buf: None
+    s: ConfigFields
+
+
+class ShotData(NamedTuple):
+    """What Shot() returns (natmod's `Shot` namedtuple)."""
+
+    buf: None
+    s: ShotFields
+    holder: None
+
+
+class RequestData(NamedTuple):
+    """What Request() returns (natmod's `Request` namedtuple)."""
+
+    buf: None
+    s: RequestFields
+    traj: None
+
+
+def Wind(
+    velocity_fps: float = 0.0,
+    direction_from_rad: float = 0.0,
+    until_distance_ft: float = _INF,
+    max_distance_ft: float = _INF,
+) -> WindData:
+    return WindData(
         None,
-        _Fields(
+        WindFields(
             velocity_fps=float(velocity_fps),
             direction_from_rad=float(direction_from_rad),
             until_distance_ft=float(until_distance_ft),
@@ -242,17 +344,17 @@ def Wind(velocity_fps=0.0, direction_from_rad=0.0, until_distance_ft=_INF, max_d
 
 
 def Config(
-    step_multiplier=0.5,
-    zero_finding_accuracy=0.001,
-    minimum_velocity=50.0,
-    maximum_drop=-15000.0,
-    max_iterations=50,
-    gravity_constant=-32.17405,
-    minimum_altitude=-1500.0,
-):
-    return _Config(
+    step_multiplier: float = 0.5,
+    zero_finding_accuracy: float = 0.001,
+    minimum_velocity: float = 50.0,
+    maximum_drop: float = -15000.0,
+    max_iterations: int = 50,
+    gravity_constant: float = -32.17405,
+    minimum_altitude: float = -1500.0,
+) -> ConfigData:
+    return ConfigData(
         None,
-        _Fields(
+        ConfigFields(
             step_multiplier=float(step_multiplier),
             zero_finding_accuracy=float(zero_finding_accuracy),
             minimum_velocity=float(minimum_velocity),
@@ -264,41 +366,41 @@ def Config(
     )
 
 
-def _floats(seq, count):
-    """A drag column: a packed float32 buffer (what MultiBC() returns) or a plain sequence."""
-    if isinstance(seq, (bytes, bytearray, memoryview)):
-        return list(_struct.unpack_from(f"<{count}f", seq))
-    return [float(seq[i]) for i in range(count)]
+def _floats(column: DragColumn, count: int) -> list[float]:
+    if isinstance(column, (bytes, bytearray, memoryview)):
+        return list(_struct.unpack_from(f"<{count}f", column))
+    return [float(column[i]) for i in range(count)]
 
 
 def Shot(
-    bc=0.0,
-    weight_grain=0.0,
-    diameter_inch=0.0,
-    length_inch=0.0,
-    muzzle_velocity_fps=0.0,
-    sight_height_ft=0.0,
-    twist_inch=0.0,
-    temp_c=15.0,
-    pressure_hpa=1013.25,
-    altitude_ft=0.0,
-    humidity=0.5,
-    look_angle_rad=0.0,
-    barrel_elevation_rad=0.0,
-    barrel_azimuth_rad=0.0,
-    cant_angle_rad=0.0,
-    latitude_deg=_NaN,
-    azimuth_deg=_NaN,
-    drag_type=DRAG_G7,
-    drag_mach=None,
-    drag_cd=None,
-    drag_count=None,
-    winds=None,
-    config=None,
-):
+    bc: float = 0.0,
+    weight_grain: float = 0.0,
+    diameter_inch: float = 0.0,
+    length_inch: float = 0.0,
+    muzzle_velocity_fps: float = 0.0,
+    sight_height_ft: float = 0.0,
+    twist_inch: float = 0.0,
+    temp_c: float = 15.0,
+    pressure_hpa: float = 1013.25,
+    altitude_ft: float = 0.0,
+    humidity: float = 0.5,
+    look_angle_rad: float = 0.0,
+    barrel_elevation_rad: float = 0.0,
+    barrel_azimuth_rad: float = 0.0,
+    cant_angle_rad: float = 0.0,
+    latitude_deg: float = _NaN,
+    azimuth_deg: float = _NaN,
+    drag_type: int = DRAG_G7,
+    drag_mach: DragColumn | None = None,
+    drag_cd: DragColumn | None = None,
+    drag_count: int | None = None,
+    winds: Iterable[WindData] | None = None,
+    config: ConfigData | None = None,
+) -> ShotData:
     cfg = config if config is not None else Config()
-    winds = list(winds or [])[:_MAX_WINDS]
-    mach = cd = None
+    wind_list = list(winds or [])[:_MAX_WINDS]
+    mach: list[float] | None = None
+    cd: list[float] | None = None
     if drag_type == DRAG_CUSTOM and drag_mach and drag_cd:
         if drag_count is not None:
             dc = drag_count
@@ -308,7 +410,7 @@ def Shot(
             dc = min(len(drag_mach), len(drag_cd))
         dc = min(dc, _MAX_DRAG_PTS)
         mach, cd = _floats(drag_mach, dc), _floats(drag_cd, dc)
-    props = _Fields(
+    props = ShotProps(
         bc=float(bc),
         weight_grain=float(weight_grain),
         diameter_inch=float(diameter_inch),
@@ -327,23 +429,26 @@ def Shot(
         latitude_deg=float(latitude_deg),
         azimuth_deg=float(azimuth_deg),
     )
-    s = _Fields(
+    s = ShotFields(
         props=props,
         cfg=cfg.s,
         drag_type=drag_type,
-        wind_count=len(winds),
-        drag_count=len(mach) if mach else 0,
-        winds=[w.s for w in winds],
+        winds=[w.s for w in wind_list],
         drag_mach=mach,
         drag_cd=cd,
     )
-    return _Shot(None, s, None)
+    return ShotData(None, s, None)
 
 
-def Request(range_limit_ft=3000.0, range_step_ft=100.0, time_step=0.0, filter_flags=TRAJ_FLAG_RANGE):
-    return _Request(
+def Request(
+    range_limit_ft: float = 3000.0,
+    range_step_ft: float = 100.0,
+    time_step: float = 0.0,
+    filter_flags: int = TRAJ_FLAG_RANGE,
+) -> RequestData:
+    return RequestData(
         None,
-        _Fields(
+        RequestFields(
             range_limit_ft=float(range_limit_ft),
             range_step_ft=float(range_step_ft),
             time_step=float(time_step),
@@ -353,12 +458,14 @@ def Request(range_limit_ft=3000.0, range_step_ft=100.0, time_step=0.0, filter_fl
     )
 
 
-def _serialize(shot):
+def _serialize(shot: ShotData) -> list[float]:
     """Flatten a Shot into tiny_bclibc_wasm.c's input layout."""
     s = shot.s
     p = s.props
     c = s.cfg
-    if s.drag_type == DRAG_CUSTOM and s.drag_mach:
+    mach: Sequence[float]
+    cd: Sequence[float]
+    if s.drag_type == DRAG_CUSTOM and s.drag_mach and s.drag_cd:
         mach, cd = s.drag_mach, s.drag_cd
     elif s.drag_type == DRAG_G1:
         mach, cd = _drag_tables.G1_MACH, _drag_tables.G1_CD
@@ -386,11 +493,11 @@ def _serialize(shot):
         c.zero_finding_accuracy,
         c.minimum_velocity,
         c.maximum_drop,
-        c.max_iterations,
+        float(c.max_iterations),
         c.gravity_constant,
         c.minimum_altitude,
-        len(mach),
-        len(s.winds),
+        float(len(mach)),
+        float(len(s.winds)),
     ]
     values.extend(mach)
     values.extend(cd)
@@ -399,17 +506,32 @@ def _serialize(shot):
     return values
 
 
-def _row(v, i):
+def _row(v: Sequence[float], i: int) -> Row:
     """One TrajectoryData row as natmod's 16-tuple (15 floats + int flag)."""
-    r = v[i : i + _ROW]
-    r[15] = int(r[15])
-    return tuple(r)
+    return (
+        v[i],
+        v[i + 1],
+        v[i + 2],
+        v[i + 3],
+        v[i + 4],
+        v[i + 5],
+        v[i + 6],
+        v[i + 7],
+        v[i + 8],
+        v[i + 9],
+        v[i + 10],
+        v[i + 11],
+        v[i + 12],
+        v[i + 13],
+        v[i + 14],
+        int(v[i + 15]),
+    )
 
 
 # ── API ───────────────────────────────────────────────────────────────────────
 
 
-def integrate(shot, req):
+def integrate(shot: ShotData, req: RequestData) -> tuple[list[Row], int]:
     """Return ``(rows, stop_reason)``; each row is a 16-tuple indexed by the ``T_*`` constants."""
     r = req.s
     out = _call(
@@ -425,7 +547,7 @@ def integrate(shot, req):
     return [_row(out, _INTEGRATE_HEADER + k * _ROW) for k in range(n)], int(out[1])
 
 
-def integrate_stream(shot, req, cb):
+def integrate_stream(shot: ShotData, req: RequestData, cb: Callable[[Row], object]) -> tuple[int, int]:
     """Call ``cb(row)`` per row; a truthy return stops early. Returns ``(count, stop_reason)``.
 
     The module computes the whole trajectory in one call and the callbacks run afterwards (one
@@ -439,34 +561,35 @@ def integrate_stream(shot, req, cb):
     return len(rows), reason
 
 
-def integrate_at(shot, interp, val):
+def integrate_at(shot: ShotData, interp: int, val: float) -> tuple[RawState, Row]:
     """Return ``(raw, row)`` where the ``INTERP_*`` quantity equals val.
 
     ``raw`` is (time, px, py, pz, vx, vy, vz, mach); ``row`` a 16-tuple.
     """
-    out = _call("integrate_at", "tbw_integrate_at", _serialize(shot), int(interp), float(val))
-    return tuple(out[1:_AT_HEADER]), _row(out, _AT_HEADER)
+    o = _call("integrate_at", "tbw_integrate_at", _serialize(shot), int(interp), float(val))
+    raw: RawState = (o[1], o[2], o[3], o[4], o[5], o[6], o[7], o[8])
+    return raw, _row(o, _AT_HEADER)
 
 
-def find_zero_angle(shot, dist_ft):
+def find_zero_angle(shot: ShotData, dist_ft: float) -> float:
     """Barrel elevation (rad) that zeroes the shot at dist_ft."""
     return _call("find_zero_angle", "tbw_find_zero_angle", _serialize(shot), float(dist_ft))[1]
 
 
-def zero_point(shot, dist_ft):
+def zero_point(shot: ShotData, dist_ft: float) -> tuple[float, Row]:
     """Return the solver's ``(zero_angle_rad, terminal_row)`` without re-integration."""
     out = _call("zero_point", "tbw_find_zero_point", _serialize(shot), float(dist_ft))
     return out[1], _row(out, 2)
 
 
-def zero(shot, dist_ft):
+def zero(shot: ShotData, dist_ft: float) -> float:
     """Set ``shot``'s barrel elevation for dist_ft and return it in radians."""
     angle, _point = zero_point(shot, dist_ft)
     shot.s.props.barrel_elevation_rad = angle
     return angle
 
 
-def aim(shot, dist_ft):
+def aim(shot: ShotData, dist_ft: float) -> tuple[float, float, Row]:
     """Return ``(vertical_hold_rad, windage_rad, point)`` for a target distance.
 
     The hold is relative to the barrel elevation currently stored in ``shot`` (normally set by
@@ -476,17 +599,17 @@ def aim(shot, dist_ft):
     return angle - shot.s.props.barrel_elevation_rad, point[T_WINDAGE_ANGLE], point
 
 
-def fire(shot, req):
+def fire(shot: ShotData, req: RequestData) -> tuple[list[Row], int]:
     """Calculate and return ``(trajectory_rows, stop_reason)``."""
     return integrate(shot, req)
 
 
-def find_apex(shot):
+def find_apex(shot: ShotData) -> Row:
     """The apex (vertical velocity = 0) as a 16-tuple row."""
     return _row(_call("find_apex", "tbw_find_apex", _serialize(shot)), 1)
 
 
-def find_max_range(shot, lo, hi):
+def find_max_range(shot: ShotData, lo: float, hi: float) -> tuple[float, float]:
     """Return ``(max_range_ft, angle_rad)`` searched between lo and hi degrees."""
     out = _call("find_max_range", "tbw_find_max_range", _serialize(shot), float(lo), float(hi))
     return out[1], out[2]
@@ -496,7 +619,7 @@ def find_max_range(shot, lo, hi):
 # Same algorithm as natmod's build_multibc (src/tiny_bclibc_mp.c) and ffimod's pure-Python port.
 
 
-def _interp_bc(bc_mach, bc_val, mach):
+def _interp_bc(bc_mach: Sequence[float], bc_val: Sequence[float], mach: float) -> float:
     n = len(bc_mach)
     if mach <= bc_mach[0]:
         return bc_val[0]
@@ -513,10 +636,15 @@ def _interp_bc(bc_mach, bc_val, mach):
     return bc_val[lo] + t * (bc_val[hi] - bc_val[lo])
 
 
-def build_multibc(drag_type, bc_points_buf, out_mach_buf, out_cd_buf):
+def build_multibc(
+    drag_type: int,
+    bc_points_buf: bytes | bytearray | memoryview,
+    out_mach_buf: bytearray | memoryview,
+    out_cd_buf: bytearray | memoryview,
+) -> int:
     """Low-level primitive with natmod's signature: packed "<ff" (mach, bc) points in, float32 out."""
     n_pts = len(bc_points_buf) // 8
-    pts = sorted(
+    pts: list[tuple[float, float]] = sorted(
         (_struct.unpack_from("<ff", bc_points_buf, i * 8) for i in range(n_pts)),
         key=lambda p: p[0],
     )
@@ -535,7 +663,7 @@ def build_multibc(drag_type, bc_points_buf, out_mach_buf, out_cd_buf):
     return n
 
 
-def MultiBC(bc_points, drag_type=DRAG_G7):
+def MultiBC(bc_points: Iterable[tuple[float, float]], drag_type: int = DRAG_G7) -> tuple[bytearray, bytearray, int]:
     """Fold (mach, bc) points into one custom drag curve: returns ``(mach_buf, cd_buf, count)``.
 
     Feed it to ``Shot(bc=1.0, drag_type=DRAG_CUSTOM, drag_mach=mach_buf, drag_cd=cd_buf,

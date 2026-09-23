@@ -33,13 +33,21 @@ repos:
         pass_filenames: false
         files: '\.pyi?$'
 
+      - id: uv-stubtest
+        name: stubtest (__init__.pyi matches the module)
+        entry: uv
+        args: ["run", "python", "-m", "mypy.stubtest", "tiny_bclibc"]
+        language: system
+        pass_filenames: false
+        files: '^src/.*\.pyi?$'
+
       - id: uv-ruff-check
         name: ruff lint & fix
         entry: uv
         args: ["run", "ruff", "check", "--fix"]
         language: system
         pass_filenames: false
-        files: '\.py$'
+        files: '\.pyi?$'
 
       - id: uv-ruff-format
         name: ruff format
@@ -47,7 +55,7 @@ repos:
         args: ["run", "ruff", "format"]
         language: system
         pass_filenames: false
-        files: '\.py$'
+        files: '\.pyi?$'
 
       - id: uv-pytest
         name: pytest

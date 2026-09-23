@@ -25,6 +25,14 @@ full API: `Shot`, `Wind`, `Config`, `Request`, `integrate`, `integrate_stream`, 
 `find_zero_angle`, `zero_point`, `zero`, `aim`, `fire`, `find_apex`, `find_max_range`, `MultiBC`,
 and the `TRAJ_FLAG_*`, `T_*` and `INTERP_*` constants.
 
+## Typing
+
+The package is fully typed and ships `py.typed`. The code uses Python 3.10 annotations, which is
+what Pythonista runs, and passes pyright in strict mode. `src/tiny_bclibc/__init__.pyi` describes
+the public API. In it, a trajectory row is `Row`, a `tuple` of 15 floats followed by the `int` flag.
+The `.s` fields of `Shot`, `Wind`, `Config` and `Request` are typed dataclasses (`ShotProps`,
+`WindFields`, ...). mypy's `stubtest` (a pre-commit hook) checks that the stub matches the module.
+
 ## WebAssembly hosts
 
 | Host | Where | How it is detected |

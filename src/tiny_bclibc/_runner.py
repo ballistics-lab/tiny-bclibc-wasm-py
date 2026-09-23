@@ -20,17 +20,26 @@ what runs in Pythonista. A call is one script evaluation: the input goes in as a
 the output comes back as one comma-joined string; JS Number.toString is the shortest round-tripping
 form, so `float()` recovers every double exactly (NaN/Infinity included).
 
-Plain Python only (3.8+, no annotations evaluated at runtime), so it also runs on PyPy and on
-Pythonista's interpreter.
+Plain Python 3.10+ (Pythonista's interpreter), no third-party imports except the optional
+`wasmtime` inside WasmtimeRunner; runs on PyPy too.
 """
 
+from __future__ import annotations
+
 import atexit
+import importlib
 import json
 import math
 import os
 import shutil
 import struct
 import subprocess
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Any, Final
+
+if TYPE_CHECKING:
+    import wasmtime
+    from wasmtime._instance import InstanceExports  # not re-exported at the package top level
 
 __all__ = (
     "AUTO_ORDER",
@@ -48,7 +57,7 @@ __all__ = (
 class TbwError(RuntimeError):
     """A tbw_* export returned a non-zero TINY_BCLIBC_Status."""
 
-    def __init__(self, status, message):
+    def __init__(self, status: int, message: str) -> None:
         RuntimeError.__init__(self, f"status {status}: {message}")
         self.status = status
         self.message = message
@@ -57,18 +66,18 @@ class TbwError(RuntimeError):
 class WasmRunner:
     """One loaded module. Subclasses implement `load_bytes` and `call`."""
 
-    name = "?"
-    sizeof_real = 0
-    version = ""
+    name: str = "?"
+    sizeof_real: int = 0  # sizeof(real_t) of the loaded module: 8 (double) or 4 (single)
+    version: str = ""  # tiny_bclibc version string of the loaded module
 
-    def load_file(self, path):
+    def load_file(self, path: str) -> None:
         with open(path, "rb") as f:
             self.load_bytes(f.read())
 
-    def load_bytes(self, wasm):
+    def load_bytes(self, wasm: bytes) -> None:
         raise NotImplementedError
 
-    def call(self, export, inputs, *args):
+    def call(self, export: str, inputs: Sequence[float], *args: float) -> list[float]:
         raise NotImplementedError
 
 
@@ -105,7 +114,7 @@ globalThis.__tbw = (function () {
 """
 
 
-def _js_number(x):
+def _js_number(x: float) -> str:
     x = float(x)
     if math.isnan(x):
         return "NaN"
@@ -114,23 +123,23 @@ def _js_number(x):
     return repr(x)
 
 
-def _js_array(values):
+def _js_array(values: Sequence[float]) -> str:
     return "[" + ",".join(_js_number(v) for v in values) + "]"
 
 
 class _JSRunner(WasmRunner):
     """A host whose only primitive is `evaluate(js_source) -> str`."""
 
-    def evaluate(self, src):
+    def evaluate(self, src: str) -> str:
         raise NotImplementedError
 
-    def load_bytes(self, wasm):
+    def load_bytes(self, wasm: bytes) -> None:
         self.evaluate(_GLUE)
         info = self.evaluate("__tbw.load([" + ",".join(map(str, bytearray(wasm))) + "])")
         size, _, self.version = info.partition(":")
         self.sizeof_real = int(size)
 
-    def call(self, export, inputs, *args):
+    def call(self, export: str, inputs: Sequence[float], *args: float) -> list[float]:
         text = self.evaluate(f"__tbw.call({json.dumps(export)},{_js_array(inputs)},{_js_array(args)})")
         if text.startswith("E"):
             status, _, message = text[1:].partition(":")
@@ -143,15 +152,15 @@ class JSContextRunner(_JSRunner):
 
     name = "jscontext"
 
-    def __init__(self):
-        from objc_util import ObjCClass  # pyright: ignore[reportMissingImports] -- Pythonista only
-
-        self._ctx = ObjCClass("JSContext").alloc().init()
+    def __init__(self) -> None:
+        # Pythonista only, and untyped (Objective-C proxies): import it as an explicit Any.
+        objc_util: Any = importlib.import_module("objc_util")
+        self._ctx: Any = objc_util.ObjCClass("JSContext").alloc().init()
         kind = self.evaluate("typeof WebAssembly")
         if kind != "object":
             raise RuntimeError(f"WebAssembly is not available in this JSContext (typeof WebAssembly = {kind})")
 
-    def evaluate(self, src):
+    def evaluate(self, src: str) -> str:
         res = self._ctx.evaluateScript_(src)
         exc = self._ctx.exception()
         if exc:
@@ -165,24 +174,23 @@ class GIJavaScriptCoreRunner(_JSRunner):
 
     name = "gi-jsc"
 
-    def __init__(self):
-        import gi  # pyright: ignore[reportMissingImports] -- PyGObject, Linux
-
+    def __init__(self) -> None:
+        # PyGObject (Linux), untyped GObject-introspection proxies: import it as an explicit Any.
+        gi: Any = importlib.import_module("gi")
         gi.require_version("JavaScriptCore", "4.1")
-        from gi.repository import JavaScriptCore  # pyright: ignore[reportMissingImports]
-
-        self._ctx = JavaScriptCore.Context()
+        javascriptcore: Any = importlib.import_module("gi.repository.JavaScriptCore")
+        self._ctx: Any = javascriptcore.Context()
         kind = self.evaluate("typeof WebAssembly")
         if kind != "object":
             raise RuntimeError(f"WebAssembly is not available in this JSContext (typeof WebAssembly = {kind})")
 
-    def evaluate(self, src):
+    def evaluate(self, src: str) -> str:
         res = self._ctx.evaluate(src, -1)
         exc = self._ctx.get_exception()
         if exc:
             self._ctx.clear_exception()
             raise RuntimeError(f"[JS] {exc.to_string()}")
-        return res.to_string()
+        return str(res.to_string())
 
 
 _NODE_LOOP = r"""
@@ -201,7 +209,7 @@ class NodeRunner(_JSRunner):
 
     name = "node"
 
-    def __init__(self, node=None):
+    def __init__(self, node: str | None = None) -> None:
         node = node or shutil.which("node")
         if not node:
             raise FileNotFoundError("node not found on PATH")
@@ -218,7 +226,7 @@ class NodeRunner(_JSRunner):
         self._stdout = self._proc.stdout
         atexit.register(self.close)
 
-    def evaluate(self, src):
+    def evaluate(self, src: str) -> str:
         self._stdin.write(json.dumps(src) + "\n")
         self._stdin.flush()
         line = self._stdout.readline()
@@ -227,9 +235,9 @@ class NodeRunner(_JSRunner):
         reply = json.loads(line)
         if not reply["ok"]:
             raise RuntimeError("[JS] {}".format(reply["value"]))
-        return reply["value"]
+        return str(reply["value"])
 
-    def close(self):
+    def close(self) -> None:
         if self._proc.poll() is None:
             self._stdin.close()
             self._proc.wait(timeout=5)
@@ -244,37 +252,49 @@ class WasmtimeRunner(WasmRunner):
 
     name = "wasmtime"
 
-    def __init__(self):
+    def __init__(self) -> None:
+        import wasmtime  # optional dependency: ImportError here means "host not available"
+
+        self._store: wasmtime.Store = wasmtime.Store()
+        self._ex: InstanceExports | None = None
+        self._mem: wasmtime.Memory | None = None
+
+    def load_bytes(self, wasm: bytes) -> None:
         import wasmtime
 
-        self._wt = wasmtime
-        self._store = wasmtime.Store()
-
-    def load_bytes(self, wasm):
-        wt = self._wt
-        module = wt.Module(self._store.engine, bytes(wasm))
-        inst = wt.Instance(self._store, module, [])
-        self._ex = inst.exports(self._store)
-        mem = self._ex["memory"]
-        if not isinstance(mem, wt.Memory):
+        module = wasmtime.Module(self._store.engine, bytes(wasm))
+        inst = wasmtime.Instance(self._store, module, [])
+        exports = inst.exports(self._store)
+        self._ex = exports
+        mem = exports["memory"]
+        if not isinstance(mem, wasmtime.Memory):
             raise TypeError("export 'memory' is not a memory")
         self._mem = mem
-        if "_initialize" in self._ex:
+        if "_initialize" in exports:
             self._fn("_initialize")()
-        self.sizeof_real = self._fn("tbw_sizeof_real")()
-        self.version = self._cstr(self._fn("tbw_version")())
+        self.sizeof_real = int(self._fn("tbw_sizeof_real")())
+        self.version = self._cstr(int(self._fn("tbw_version")()))
 
-    def _fn(self, name):
+    def _fn(self, name: str) -> Callable[..., Any]:
+        import wasmtime
+
+        if self._ex is None:
+            raise RuntimeError("no module loaded")
         f = self._ex[name]
-        if not isinstance(f, self._wt.Func):
+        if not isinstance(f, wasmtime.Func):
             raise TypeError(f"export {name!r} is not a function")
         store = self._store
         return lambda *a: f(store, *a)
 
-    def _read(self, ptr, n):
-        return self._mem.read(self._store, ptr, ptr + n)
+    def _memory(self) -> wasmtime.Memory:
+        if self._mem is None:
+            raise RuntimeError("no module loaded")
+        return self._mem
 
-    def _cstr(self, ptr):
+    def _read(self, ptr: int, n: int) -> bytearray:
+        return self._memory().read(self._store, ptr, ptr + n)
+
+    def _cstr(self, ptr: int) -> str:
         out = bytearray()
         while True:
             chunk = self._read(ptr, 64)
@@ -285,23 +305,23 @@ class WasmtimeRunner(WasmRunner):
             out += chunk
             ptr += 64
 
-    def call(self, export, inputs, *args):
+    def call(self, export: str, inputs: Sequence[float], *args: float) -> list[float]:
         n = len(inputs)
-        ptr = self._fn("tbw_input")(n)
+        ptr = int(self._fn("tbw_input")(n))
         if not ptr:
             raise TbwError(1, "tbw_input: out of memory")
-        self._mem.write(self._store, struct.pack(f"<{n}d", *inputs), ptr)
-        rc = self._fn(export)(*args)
+        self._memory().write(self._store, struct.pack(f"<{n}d", *inputs), ptr)
+        rc = int(self._fn(export)(*args))
         if rc != 0:
-            raise TbwError(rc, self._cstr(self._fn("tbw_last_error")()))
-        out_n = self._fn("tbw_output_len")()
-        raw = self._read(self._fn("tbw_output")(), out_n * 8)
+            raise TbwError(rc, self._cstr(int(self._fn("tbw_last_error")())))
+        out_n = int(self._fn("tbw_output_len")())
+        raw = self._read(int(self._fn("tbw_output")()), out_n * 8)
         return list(struct.unpack(f"<{out_n}d", raw))
 
 
 # ── Host selection ────────────────────────────────────────────────────────────
 
-HOSTS = {
+HOSTS: Final[dict[str, type[WasmRunner]]] = {
     "jscontext": JSContextRunner,
     "wasmtime": WasmtimeRunner,
     "gi-jsc": GIJavaScriptCoreRunner,
@@ -311,10 +331,10 @@ HOSTS = {
 # Tried in this order when nothing is chosen explicitly. Each constructor is its own availability
 # probe: it raises when its runtime isn't there (ImportError for objc_util/wasmtime/gi, a missing
 # `node` binary, a JS engine without WebAssembly), so "available" means "could actually start".
-AUTO_ORDER = ("jscontext", "wasmtime", "gi-jsc", "node")
+AUTO_ORDER: Final[tuple[str, ...]] = ("jscontext", "wasmtime", "gi-jsc", "node")
 
 
-def default_runner():
+def default_runner() -> WasmRunner:
     """Start a host: $TINY_BCLIBC_HOST if set, else the first of AUTO_ORDER that starts.
 
     AUTO_ORDER puts Pythonista's JSContext first (only exists there), then wasmtime (in-process,
@@ -325,7 +345,7 @@ def default_runner():
         if choice not in HOSTS:
             raise ValueError("TINY_BCLIBC_HOST={!r}: expected one of {}".format(choice, ", ".join(HOSTS)))
         return HOSTS[choice]()
-    errors = []
+    errors: list[str] = []
     for name in AUTO_ORDER:
         try:
             return HOSTS[name]()
