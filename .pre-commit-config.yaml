@@ -1,0 +1,60 @@
+default_install_hook_types: [pre-commit]
+default_language_version:
+  python: python3
+
+repos:
+  - repo: local
+    hooks:
+      - id: uv-lock
+        name: uv lock check
+        entry: uv
+        # --check only, not --upgrade: same reasoning as py-ballisticcalc's hook -- --upgrade would
+        # re-resolve to whatever is newest on PyPI at run time and fail later pushes with no code
+        # change involved. --check only verifies uv.lock still matches pyproject.toml.
+        args: ["lock", "--check"]
+        language: system
+        pass_filenames: false
+        files: '^(pyproject\.toml|uv\.lock)$'
+
+      - id: uv-sync
+        name: uv sync before hooks
+        entry: uv
+        # Rebuilds the editable install -- and with it the .wasm modules -- whenever pyproject.toml's
+        # [tool.uv] cache-keys changed (build hooks, wrapper C source, tiny_bclibc headers).
+        args: ["sync"]
+        language: system
+        pass_filenames: false
+
+      - id: uv-pyright
+        name: pyright
+        entry: uv
+        args: ["run", "pyright"]
+        language: system
+        pass_filenames: false
+        files: '\.pyi?$'
+
+      - id: uv-ruff-check
+        name: ruff lint & fix
+        entry: uv
+        args: ["run", "ruff", "check", "--fix"]
+        language: system
+        pass_filenames: false
+        files: '\.py$'
+
+      - id: uv-ruff-format
+        name: ruff format
+        entry: uv
+        args: ["run", "ruff", "format"]
+        language: system
+        pass_filenames: false
+        files: '\.py$'
+
+      - id: uv-pytest
+        name: pytest
+        entry: uv
+        # Fast (well under a second): host agreement + micropython-bclibc's natmod suite in both
+        # precisions (skipped when ../micropython-bclibc isn't checked out).
+        args: ["run", "pytest", "-q"]
+        language: system
+        pass_filenames: false
+        files: '(\.py|\.c|\.h|pyproject\.toml)$'

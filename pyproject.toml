@@ -1,0 +1,79 @@
+[build-system]
+# ziglang is the wasm32 C compiler (clang + wasi libc/libm) build_wasm.py uses: every build compiles
+# the .wasm modules itself, so nothing needs to be preinstalled. TINY_BCLIBC_CC overrides it.
+requires = ["setuptools>=77", "setuptools_scm>=8", "ziglang>=0.16.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tiny-bclibc-wasm-py"
+dynamic = ["version"]
+description = "micropython-bclibc's tiny_bclibc API for CPython, PyPy and Pythonista, backed by tiny_bclibc compiled to WebAssembly"
+readme = "README.md"
+authors = [{ name = "o-murphy", email = "thehelixpg@gmail.com" }]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.optional-dependencies]
+# In-process WebAssembly host for desktops; without it the package uses Node or WebKitGTK
+# JavaScriptCore, and in Pythonista it uses JSContext (see src/tiny_bclibc/_runner.py).
+wasmtime = ["wasmtime"]
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+packages = ["tiny_bclibc"]
+include-package-data = false
+
+[tool.setuptools.package-data]
+tiny_bclibc = ["*.wasm"]
+
+[tool.setuptools_scm]
+# Until the repo has a tag (or any commit), there is nothing to derive a version from.
+fallback_version = "0.0.0"
+
+[tool.uv]
+# Rebuild the editable install (and so the .wasm modules) when the C sources or build hooks change,
+# not only when pyproject.toml does.
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "setup.py" },
+    { file = "build_wasm.py" },
+    { file = "bclibc/tiny_bclibc/wasm/*.c" },
+    { file = "bclibc/tiny_bclibc/include/**/*.h" },
+    { git = { commit = true } },
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.6.2",
+    "pyright>=1.1.414",
+    "pytest>=9.1.1",
+    "ruff>=0.16.8",
+    "setuptools>=84.0.0",
+    "setuptools-scm>=10.2.3",
+    "wasmtime>=49.0.0",
+    "ziglang>=0.16.0",
+]
+
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-rf"
+testpaths = ["tests"]
+
+[tool.pyright]
+include = ["src", "tests", "examples", "build_wasm.py", "setup.py"]
+
+[tool.ruff]
+include = [
+    "pyproject.toml",
+    "src/**/*.py",
+    "build_wasm.py",
+    "setup.py",
+    "tests/**/*.py",
+    "examples/**/*.py",
+]
+extend-exclude = ["bclibc"]
+line-length = 120
+
+[tool.ruff.lint]
+ignore = ["F403", "F405"]

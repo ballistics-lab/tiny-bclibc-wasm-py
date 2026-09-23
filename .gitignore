@@ -1,0 +1,19 @@
+**/__pycache__
+**/.ruff_cache/
+**/.pytest_cache/
+**/.idea
+**/*.pyd
+**/*.so
+**/*.dylib
+**/build
+**/dist
+**/wheelhouse
+**/*.egg-info
+**/.venv
+**/*.ps1
+**/debug
+.vscode
+
+# build_wasm.py output (compiled on every build from the bclibc submodule, shipped inside the wheel)
+src/tiny_bclibc/*.wasm
+src/tiny_bclibc/_bclibc_version.txt
