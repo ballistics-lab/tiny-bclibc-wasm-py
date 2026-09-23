@@ -1,4 +1,4 @@
-# tiny-bclibc-wasm-py
+# tiny-bclibc-wasm
 
 `import tiny_bclibc` for **CPython, PyPy and Pythonista**, with the same API as the natmod `.mpy`
 from [micropython-bclibc](https://github.com/ballistics-lab/micropython-bclibc). A script written
@@ -38,7 +38,7 @@ The `.s` fields of `Shot`, `Wind`, `Config` and `Request` are typed dataclasses 
 | Host | Where | How it is detected |
 |---|---|---|
 | `jscontext` | Pythonista (iOS) | JavaScriptCore's `JSContext` through `objc_util` |
-| `wasmtime` | anywhere with the `wasmtime` package | `import wasmtime` (`uv add tiny-bclibc-wasm-py[wasmtime]`) |
+| `wasmtime` | anywhere with the `wasmtime` package | `import wasmtime` (`uv add tiny-bclibc-wasm[wasmtime]`) |
 | `wasm3` | CPython 3.11+ with [pywasm3](https://github.com/wasm3/pywasm3) | `import wasm3`; install it from git: `uv add "pywasm3 @ git+https://github.com/wasm3/pywasm3"` (its PyPI release predates the API used here) |
 | `gi-jsc` | Linux | WebKitGTK's JavaScriptCore through PyGObject (`apt install gir1.2-javascriptcoregtk-4.1 python3-gi`) |
 | `node` | anywhere with Node.js | `node` on `PATH` |
@@ -68,7 +68,7 @@ uv run python build_wasm.py    # just recompile the modules
 
 `uv sync` recompiles the modules when the wrapper sources, the headers or the build hooks change.
 The sdist carries only `bclibc/tiny_bclibc/{include,wasm}` from the submodule, plus the bclibc
-version, so `pip install tiny-bclibc-wasm-py-*.tar.gz` builds anywhere Python does.
+version, so `pip install tiny_bclibc_wasm-*.tar.gz` builds anywhere Python does.
 `TINY_BCLIBC_CC="clang --sysroot=<wasi-sysroot>"` switches to another wasm32 compiler.
 
 Precision: double by default. `TINY_BCLIBC_PRECISION=single` loads the float32 build, the same

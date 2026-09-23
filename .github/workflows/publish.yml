@@ -51,7 +51,7 @@ jobs:
         env:
           SETUPTOOLS_SCM_PRETEND_VERSION: ${{ inputs.version }}
           # PyPI/TestPyPI reject local version segments (+g<hash>); keep them on build-only runs.
-          SETUPTOOLS_SCM_OVERRIDES_FOR_TINY_BCLIBC_WASM_PY: >-
+          SETUPTOOLS_SCM_OVERRIDES_FOR_TINY_BCLIBC_WASM: >-
             ${{ (github.event_name == 'push' || inputs.testpypi) && '{local_scheme = "no-local-version"}' || '' }}
         run: uv build --out-dir dist
 
@@ -138,7 +138,7 @@ jobs:
         run: |
           gh release create "${{ github.ref_name }}" \
             --repo "${{ github.repository }}" \
-            --title "tiny-bclibc-wasm-py ${{ github.ref_name }}" \
+            --title "tiny-bclibc-wasm ${{ github.ref_name }}" \
             --generate-notes \
             --draft \
             artifacts/dist/* artifacts/extras/*
