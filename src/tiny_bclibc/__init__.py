@@ -25,7 +25,8 @@ Typing: fully annotated (Python 3.10 syntax, which Pythonista runs); the public 
 described by __init__.pyi, checked against this module with mypy's stubtest.
 
 Configuration (environment variables, read on first use):
-    TINY_BCLIBC_PRECISION   double (default) | single -- which .wasm to load
+    TINY_BCLIBC_PRECISION   double (default) | single -- which .wasm to load first; see
+                            set_precision() to switch from code
     TINY_BCLIBC_WASM        explicit path to a .wasm (overrides the one next to this file)
     TINY_BCLIBC_HOST        jscontext | wasmtime | wasm3 | gi-jsc | node (default: first available,
                             see _runner.default_runner); set_host() does the same from code
@@ -91,8 +92,11 @@ __all__ = [
     "host",
     "integrate",
     "integrate_at",
+    "integrate_ex",
     "integrate_stream",
+    "precision",
     "set_host",
+    "set_precision",
     "version",
     "zero",
     "zero_point",
@@ -164,16 +168,18 @@ DragColumn: TypeAlias = Sequence[float] | bytes | bytearray | memoryview
 
 # ── Module loading ────────────────────────────────────────────────────────────
 _HERE: Final = os.path.dirname(os.path.abspath(__file__))
-_active: WasmRunner | None = None  # the loaded host (named so it can't shadow the _runner submodule)
+_PRECISIONS: Final = ("double", "single")
+# One loaded host per precision (named _actives so it can't shadow the _runner submodule).
+_actives: dict[str, WasmRunner] = {}
 _host_choice: str | WasmRunner | None = None
+_precision: str = "single" if os.environ.get("TINY_BCLIBC_PRECISION", "double").lower().startswith("s") else "double"
 
 
 def _get_runner() -> WasmRunner:
-    global _active
-    if _active is None:
-        single = os.environ.get("TINY_BCLIBC_PRECISION", "double").lower().startswith("s")
+    runner = _actives.get(_precision)
+    if runner is None:
         path = os.environ.get("TINY_BCLIBC_WASM") or os.path.join(
-            _HERE, "tiny_bclibc_sp.wasm" if single else "tiny_bclibc_dp.wasm"
+            _HERE, "tiny_bclibc_sp.wasm" if _precision == "single" else "tiny_bclibc_dp.wasm"
         )
         if not os.path.isfile(path):
             raise FileNotFoundError(
@@ -183,8 +189,8 @@ def _get_runner() -> WasmRunner:
             )
         runner = _pick_host()
         runner.load_file(path)
-        _active = runner
-    return _active
+        _actives[_precision] = runner
+    return runner
 
 
 def _call(what: str, export: str, inputs: Sequence[float], *args: float) -> list[float]:
@@ -208,11 +214,27 @@ def set_host(host: str | WasmRunner | None) -> None:
     ``host`` is a name (see _runner.HOSTS), a ready WasmRunner instance, or
     None to go back to automatic selection. Takes effect on the next call (the module is reloaded).
     """
-    global _host_choice, _active
+    global _host_choice
     if host is not None and not isinstance(host, WasmRunner) and host not in HOSTS:
         raise ValueError("unknown host {!r}: expected one of {}".format(host, ", ".join(HOSTS)))
     _host_choice = host
-    _active = None
+    _actives.clear()
+
+
+def set_precision(precision: str) -> None:
+    """Switch between the double- and single-precision modules ("double" | "single").
+
+    Process-wide, and cheap to flip back and forth: each module is loaded once, on first use.
+    """
+    global _precision
+    if precision not in _PRECISIONS:
+        raise ValueError(f"unknown precision {precision!r}: expected one of {', '.join(_PRECISIONS)}")
+    _precision = precision
+
+
+def precision() -> str:
+    """The precision in use: "double" or "single"."""
+    return _precision
 
 
 def version() -> str:
@@ -531,8 +553,27 @@ def _row(v: Sequence[float], i: int) -> Row:
 # ── API ───────────────────────────────────────────────────────────────────────
 
 
+class Trajectory(NamedTuple):
+    """Everything one integration returns (see integrate_ex)."""
+
+    rows: list[Row]
+    reason: int  # TINY_BCLIBC_TerminationReason
+    total: int  # rows the solver emitted (== len(rows) unless the output was cut short)
+    final: RawState  # the exact terminal state, whether or not a row was emitted for it
+
+
 def integrate(shot: ShotData, req: RequestData) -> tuple[list[Row], int]:
     """Return ``(rows, stop_reason)``; each row is a 16-tuple indexed by the ``T_*`` constants."""
+    traj = integrate_ex(shot, req)
+    return traj.rows, traj.reason
+
+
+def integrate_ex(shot: ShotData, req: RequestData) -> Trajectory:
+    """Like integrate(), plus the row total and the terminal raw state (not part of the natmod API).
+
+    The terminal state lets a caller close a trajectory that ended other than by reaching the
+    requested range with its exact last point.
+    """
     r = req.s
     out = _call(
         "integrate",
@@ -544,7 +585,9 @@ def integrate(shot: ShotData, req: RequestData) -> tuple[list[Row], int]:
         r.filter_flags,
     )
     n = int(out[3])
-    return [_row(out, _INTEGRATE_HEADER + k * _ROW) for k in range(n)], int(out[1])
+    final: RawState = (out[4], out[5], out[6], out[7], out[8], out[9], out[10], out[11])
+    rows = [_row(out, _INTEGRATE_HEADER + k * _ROW) for k in range(n)]
+    return Trajectory(rows, int(out[1]), int(out[2]), final)
 
 
 def integrate_stream(shot: ShotData, req: RequestData, cb: Callable[[Row], object]) -> tuple[int, int]:

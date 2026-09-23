@@ -103,3 +103,26 @@ def _kwargs(shot, **override):
     }
     kw.update(override)
     return kw
+
+
+def test_integrate_ex_returns_terminal_state(shot):
+    bc.zero(shot, 100 * M)
+    traj = bc.integrate_ex(shot, bc.Request(range_limit_ft=500 * M, range_step_ft=100 * M))
+    rows, reason = bc.integrate(shot, bc.Request(range_limit_ft=500 * M, range_step_ft=100 * M))
+    assert traj.rows == rows and traj.reason == reason
+    assert traj.total == len(rows)
+    # The last accepted adaptive step: at or just past the requested range, and no earlier than the last row.
+    assert traj.final[1] >= 500 * M
+    assert traj.final[0] >= traj.rows[-1][bc.T_TIME]
+
+
+def test_precision_switch(shot):
+    try:
+        bc.set_precision("single")
+        assert bc.precision() == "single" and bc.version().endswith("-sp")
+        bc.set_precision("double")
+        assert bc.version().endswith("-dp")
+    finally:
+        bc.set_precision("double")
+    with pytest.raises(ValueError):
+        bc.set_precision("half")

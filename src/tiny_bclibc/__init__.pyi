@@ -57,8 +57,11 @@ __all__ = [
     "host",
     "integrate",
     "integrate_at",
+    "integrate_ex",
     "integrate_stream",
+    "precision",
     "set_host",
+    "set_precision",
     "version",
     "zero",
     "zero_point",
@@ -193,6 +196,8 @@ class RequestData(NamedTuple):
 
 # ── Host ───────────────────────────────────────────────────────────────────────
 def set_host(host: str | WasmRunner | None) -> None: ...
+def set_precision(precision: str) -> None: ...
+def precision() -> str: ...
 def host() -> str: ...
 def version() -> str: ...
 
@@ -244,8 +249,15 @@ def Request(
     filter_flags: int = 8,
 ) -> RequestData: ...
 
+class Trajectory(NamedTuple):
+    rows: list[Row]
+    reason: int
+    total: int
+    final: RawState
+
 # ── Solvers ────────────────────────────────────────────────────────────────────
 def integrate(shot: ShotData, req: RequestData) -> tuple[list[Row], int]: ...
+def integrate_ex(shot: ShotData, req: RequestData) -> Trajectory: ...
 def integrate_stream(shot: ShotData, req: RequestData, cb: Callable[[Row], object]) -> tuple[int, int]: ...
 def integrate_at(shot: ShotData, interp: int, val: float) -> tuple[RawState, Row]: ...
 def find_zero_angle(shot: ShotData, dist_ft: float) -> float: ...
