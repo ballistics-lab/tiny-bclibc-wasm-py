@@ -14,13 +14,11 @@ sys.path.insert(0, os.path.join(ROOT, "src"))
 import tiny_bclibc as bc
 from tiny_bclibc import _runner
 
-HOSTS = ("wasmtime", "node", "gi-jsc", "jscontext")
-
 
 def _available():
     out = {}
     path = os.path.join(ROOT, "src", "tiny_bclibc", "tiny_bclibc_dp.wasm")
-    for name in HOSTS:
+    for name in _runner.HOSTS:
         try:
             r = _runner.HOSTS[name]()
             r.load_file(path)

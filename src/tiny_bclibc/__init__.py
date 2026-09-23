@@ -27,7 +27,7 @@ described by __init__.pyi, checked against this module with mypy's stubtest.
 Configuration (environment variables, read on first use):
     TINY_BCLIBC_PRECISION   double (default) | single -- which .wasm to load
     TINY_BCLIBC_WASM        explicit path to a .wasm (overrides the one next to this file)
-    TINY_BCLIBC_HOST        jscontext | gi-jsc | node | wasmtime (default: first available,
+    TINY_BCLIBC_HOST        jscontext | wasmtime | wasm3 | gi-jsc | node (default: first available,
                             see _runner.default_runner); set_host() does the same from code
 """
 
@@ -205,7 +205,7 @@ def _pick_host() -> WasmRunner:
 def set_host(host: str | WasmRunner | None) -> None:
     """Choose the WebAssembly host before (or instead of) the automatic pick.
 
-    ``host`` is a name ("jscontext", "gi-jsc", "node", "wasmtime"), a ready WasmRunner instance, or
+    ``host`` is a name (see _runner.HOSTS), a ready WasmRunner instance, or
     None to go back to automatic selection. Takes effect on the next call (the module is reloaded).
     """
     global _host_choice, _active
@@ -221,7 +221,7 @@ def version() -> str:
 
 
 def host() -> str:
-    """Name of the WebAssembly host in use: jscontext, gi-jsc, node or wasmtime."""
+    """Name of the WebAssembly host in use: jscontext, wasmtime, wasm3, gi-jsc or node."""
     return _get_runner().name
 
 

@@ -14,6 +14,8 @@ Hosts (see `default_runner` for how one is picked):
                             driven the same way -- the desktop rehearsal of the Pythonista setup.
     NodeRunner              a long-lived `node` subprocess (JSON lines).
     WasmtimeRunner          the `wasmtime` package (pip/uv), no JavaScript at all.
+    Wasm3Runner             pywasm3 (the wasm3 interpreter), no JavaScript either; CPython 3.11+,
+                            installed from git (its PyPI release is years old).
 
 The three JS hosts share one glue snippet (`_GLUE`), so what runs under Node or WebKitGTK is exactly
 what runs in Pythonista. A call is one script evaluation: the input goes in as an array literal and
@@ -21,7 +23,7 @@ the output comes back as one comma-joined string; JS Number.toString is the shor
 form, so `float()` recovers every double exactly (NaN/Infinity included).
 
 Plain Python 3.10+ (Pythonista's interpreter), no third-party imports except the optional
-`wasmtime` inside WasmtimeRunner; runs on PyPy too.
+`wasmtime` / `wasm3` inside their runners; runs on PyPy too.
 """
 
 from __future__ import annotations
@@ -38,6 +40,7 @@ from collections.abc import Callable, Sequence
 from typing import TYPE_CHECKING, Any, Final
 
 if TYPE_CHECKING:
+    import wasm3
     import wasmtime
     from wasmtime._instance import InstanceExports  # not re-exported at the package top level
 
@@ -48,6 +51,7 @@ __all__ = (
     "JSContextRunner",
     "NodeRunner",
     "TbwError",
+    "Wasm3Runner",
     "WasmRunner",
     "WasmtimeRunner",
     "default_runner",
@@ -319,11 +323,79 @@ class WasmtimeRunner(WasmRunner):
         return list(struct.unpack(f"<{out_n}d", raw))
 
 
+# ── wasm3 ─────────────────────────────────────────────────────────────────────
+
+
+class Wasm3Runner(WasmRunner):
+    """pywasm3: the wasm3 interpreter as a CPython extension, exports called directly.
+
+    Install it from git -- the PyPI release predates the API used here:
+        uv add "pywasm3 @ git+https://github.com/wasm3/pywasm3"
+    """
+
+    name = "wasm3"
+    # wasm3's own value stack, separate from the module's shadow stack in linear memory.
+    STACK_BYTES = 256 * 1024
+
+    def __init__(self) -> None:
+        import wasm3  # optional dependency: ImportError here means "host not available"
+
+        self._env: wasm3.Environment = wasm3.Environment()
+        self._rt: wasm3.Runtime = self._env.new_runtime(self.STACK_BYTES)
+        self._mem: wasm3.Memory | None = None
+        self._fns: dict[str, wasm3.Function] = {}
+
+    def load_bytes(self, wasm: bytes) -> None:
+        module = self._env.parse_module(bytes(wasm))
+        self._rt.load(module)
+        # A view that re-resolves the memory on every access, so it stays valid across memory.grow.
+        self._mem = module.get_memory("memory")
+        try:
+            self._fn("_initialize")()
+        except RuntimeError:  # "function lookup failed": a module without a reactor init
+            pass
+        self.sizeof_real = int(self._fn("tbw_sizeof_real")())
+        self.version = self._cstr(int(self._fn("tbw_version")()))
+
+    def _fn(self, name: str) -> wasm3.Function:
+        f = self._fns.get(name)
+        if f is None:
+            f = self._fns[name] = self._rt.find_function(name)
+        return f
+
+    def _memory(self) -> wasm3.Memory:
+        if self._mem is None:
+            raise RuntimeError("no module loaded")
+        return self._mem
+
+    def _cstr(self, ptr: int) -> str:
+        mem = self._memory()
+        end = ptr
+        while mem[end]:
+            end += 1
+        return mem[ptr:end].decode("latin-1")
+
+    def call(self, export: str, inputs: Sequence[float], *args: float) -> list[float]:
+        n = len(inputs)
+        ptr = int(self._fn("tbw_input")(n))
+        if not ptr:
+            raise TbwError(1, "tbw_input: out of memory")
+        mem = self._memory()
+        mem[ptr : ptr + 8 * n] = struct.pack(f"<{n}d", *inputs)
+        rc = int(self._fn(export)(*args))
+        if rc != 0:
+            raise TbwError(rc, self._cstr(int(self._fn("tbw_last_error")())))
+        out_n = int(self._fn("tbw_output_len")())
+        out = int(self._fn("tbw_output")())
+        return list(struct.unpack(f"<{out_n}d", mem[out : out + 8 * out_n]))
+
+
 # ── Host selection ────────────────────────────────────────────────────────────
 
 HOSTS: Final[dict[str, type[WasmRunner]]] = {
     "jscontext": JSContextRunner,
     "wasmtime": WasmtimeRunner,
+    "wasm3": Wasm3Runner,
     "gi-jsc": GIJavaScriptCoreRunner,
     "node": NodeRunner,
 }
@@ -331,14 +403,15 @@ HOSTS: Final[dict[str, type[WasmRunner]]] = {
 # Tried in this order when nothing is chosen explicitly. Each constructor is its own availability
 # probe: it raises when its runtime isn't there (ImportError for objc_util/wasmtime/gi, a missing
 # `node` binary, a JS engine without WebAssembly), so "available" means "could actually start".
-AUTO_ORDER: Final[tuple[str, ...]] = ("jscontext", "wasmtime", "gi-jsc", "node")
+AUTO_ORDER: Final[tuple[str, ...]] = ("jscontext", "wasmtime", "wasm3", "gi-jsc", "node")
 
 
 def default_runner() -> WasmRunner:
     """Start a host: $TINY_BCLIBC_HOST if set, else the first of AUTO_ORDER that starts.
 
-    AUTO_ORDER puts Pythonista's JSContext first (only exists there), then wasmtime (in-process,
-    fastest, when installed), then WebKitGTK JavaScriptCore (Linux with PyGObject), then Node.
+    AUTO_ORDER puts Pythonista's JSContext first (only exists there), then the in-process runtimes
+    when installed -- wasmtime (JIT), wasm3 (interpreter) -- then WebKitGTK JavaScriptCore (Linux
+    with PyGObject), then Node.
     """
     choice = os.environ.get("TINY_BCLIBC_HOST", "").lower()
     if choice:

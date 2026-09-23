@@ -39,6 +39,7 @@ The `.s` fields of `Shot`, `Wind`, `Config` and `Request` are typed dataclasses 
 |---|---|---|
 | `jscontext` | Pythonista (iOS) | JavaScriptCore's `JSContext` through `objc_util` |
 | `wasmtime` | anywhere with the `wasmtime` package | `import wasmtime` (`uv add tiny-bclibc-wasm-py[wasmtime]`) |
+| `wasm3` | CPython 3.11+ with [pywasm3](https://github.com/wasm3/pywasm3) | `import wasm3`; install it from git: `uv add "pywasm3 @ git+https://github.com/wasm3/pywasm3"` (its PyPI release predates the API used here) |
 | `gi-jsc` | Linux | WebKitGTK's JavaScriptCore through PyGObject (`apt install gir1.2-javascriptcoregtk-4.1 python3-gi`) |
 | `node` | anywhere with Node.js | `node` on `PATH` |
 
@@ -78,7 +79,7 @@ specific module.
 
 ```bash
 uv run pytest                              # everything below, on the automatically picked runtime
-uv run pytest --wasm-runtime node          # ... on one specific runtime: wasmtime | node | gi-jsc
+uv run pytest --wasm-runtime node          # ... on one runtime: wasmtime | wasm3 | node | gi-jsc
 uv run pytest --cov                        # with coverage
 uv run python tests/run_natmod_suite.py    # just the natmod suite, current host/precision
 uv run pyright && uv run ruff check        # types, lint
@@ -86,7 +87,8 @@ uv run pyright && uv run ruff check        # types, lint
 
 If the runtime passed to `--wasm-runtime` can't start, the run stops with an error; the tests are
 never silently skipped. CI (`.github/workflows/tests.yml`) runs the suite on wasmtime and on Node
-on Linux, Windows and macOS with CPython 3.10, CPython 3.14 and PyPy 3.11. It also runs it on
+on Linux, Windows and macOS with CPython 3.10, CPython 3.14 and PyPy 3.11, and on wasm3 wherever
+pywasm3 installs (CPython 3.11+). It also runs it on
 WebKitGTK JavaScriptCore with and without JIT, then combines coverage from all three runtimes and
 uploads it to Codecov.
 

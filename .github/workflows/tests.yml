@@ -5,11 +5,11 @@ name: Tests
 # tests/conftest.py; a runtime that can't start fails the step, it is never skipped):
 #
 #   test:     every OS x CPython oldest/newest + PyPy, on wasmtime and on Node (both available on
-#             every runner).
+#             every runner), and on wasm3 where pywasm3 installs (CPython 3.11+; built from git).
 #   jsc:      WebKitGTK's JavaScriptCore -- the engine behind Pythonista's JSContext -- with its JIT
 #             and without it (iOS apps like Pythonista run it without), as the stand-in for an iOS
 #             device.
-#   coverage: combines the Ubuntu runs of all three runtimes (each one exercises its own host class
+#   coverage: combines the Ubuntu runs of all the runtimes (each one exercises its own host class
 #             in _runner.py) and uploads the result to Codecov.
 
 on:
@@ -75,6 +75,13 @@ jobs:
         run: uv run --locked pytest -v --wasm-runtime node $COV_ARGS
         env:
           COVERAGE_FILE: .coverage.${{ env.COV_ID }}-node
+
+      - name: pytest --wasm-runtime wasm3
+        # pywasm3 is a dev dependency only on CPython >= 3.11 (see pyproject.toml)
+        if: ${{ !cancelled() && matrix.python-version != '3.10' && !startsWith(matrix.python-version, 'pypy') }}
+        run: uv run --locked pytest -v --wasm-runtime wasm3 $COV_ARGS
+        env:
+          COVERAGE_FILE: .coverage.${{ env.COV_ID }}-wasm3
 
       - name: Example
         run: uv run --locked python examples/basic.py
