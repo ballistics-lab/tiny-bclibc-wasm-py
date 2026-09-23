@@ -126,3 +126,10 @@ def test_precision_switch(shot):
         bc.set_precision("double")
     with pytest.raises(ValueError):
         bc.set_precision("half")
+
+
+def test_bench_runs_every_loop(capsys):
+    bc.bench()
+    out = capsys.readouterr().out
+    assert out.count("MFLOPS") == 6
+    assert "wasm on " + bc.host() in out

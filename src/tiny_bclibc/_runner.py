@@ -84,6 +84,10 @@ class WasmRunner:
     def call(self, export: str, inputs: Sequence[float], *args: float) -> list[float]:
         raise NotImplementedError
 
+    def call_scalar(self, export: str, *args: int) -> float:
+        """Call an export that takes integers and returns one number (no buffers), e.g. tbw_bench_*."""
+        raise NotImplementedError
+
 
 # ── JavaScript hosts ──────────────────────────────────────────────────────────
 
@@ -102,6 +106,9 @@ globalThis.__tbw = (function () {
             inst = new WebAssembly.Instance(new WebAssembly.Module(new Uint8Array(bytes)), {});
             if (inst.exports._initialize) inst.exports._initialize();
             return inst.exports.tbw_sizeof_real() + ':' + cstr(inst.exports.tbw_version());
+        },
+        scalar: function (name, args) {
+            return String(inst.exports[name].apply(null, args));
         },
         call: function (name, input, args) {
             var ptr = inst.exports.tbw_input(input.length);
@@ -149,6 +156,9 @@ class _JSRunner(WasmRunner):
             status, _, message = text[1:].partition(":")
             raise TbwError(int(status), message)
         return [float(v) for v in text.split(",")] if text else []
+
+    def call_scalar(self, export: str, *args: int) -> float:
+        return float(self.evaluate(f"__tbw.scalar({json.dumps(export)},{_js_array(args)})"))
 
 
 class JSContextRunner(_JSRunner):
@@ -309,6 +319,9 @@ class WasmtimeRunner(WasmRunner):
             out += chunk
             ptr += 64
 
+    def call_scalar(self, export: str, *args: int) -> float:
+        return float(self._fn(export)(*args))
+
     def call(self, export: str, inputs: Sequence[float], *args: float) -> list[float]:
         n = len(inputs)
         ptr = int(self._fn("tbw_input")(n))
@@ -374,6 +387,9 @@ class Wasm3Runner(WasmRunner):
         while mem[end]:
             end += 1
         return mem[ptr:end].decode("latin-1")
+
+    def call_scalar(self, export: str, *args: int) -> float:
+        return float(self._fn(export)(*args))
 
     def call(self, export: str, inputs: Sequence[float], *args: float) -> list[float]:
         n = len(inputs)

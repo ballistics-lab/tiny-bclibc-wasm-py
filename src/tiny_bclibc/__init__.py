@@ -19,7 +19,8 @@ Differences from the natmod, all at the storage level (results use the same C co
       double-precision module sees full-precision inputs. They are still `(buf, s)`-shaped
       named tuples with the fields on `.s` (`shot.s.props.barrel_elevation_rad`, `w.s.velocity_fps`,
       `cfg.s.max_iterations`, ...); `buf` is None.
-    - No bench() (a native FPU benchmark means nothing through a WebAssembly host).
+    - bench() measures the WebAssembly *host's* f32/f64 speed (the same loops, compiled to wasm),
+      not the CPU directly.
 
 Typing: fully annotated (Python 3.10 syntax, which Pythonista runs); the public surface is also
 described by __init__.pyi, checked against this module with mypy's stubtest.
@@ -32,8 +33,10 @@ Configuration (environment variables, read on first use):
                             see _runner.default_runner); set_host() does the same from code
 """
 
+import atexit
 import os
 import struct as _struct
+import time
 from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Final, NamedTuple, TypeAlias
@@ -84,6 +87,7 @@ __all__ = [
     "Shot",
     "Wind",
     "aim",
+    "bench",
     "build_multibc",
     "find_apex",
     "find_max_range",
@@ -172,6 +176,10 @@ _PRECISIONS: Final = ("double", "single")
 # One loaded host per precision (named _actives so it can't shadow the _runner submodule).
 _actives: dict[str, WasmRunner] = {}
 _host_choice: str | WasmRunner | None = None
+
+# Release the hosts while the interpreter is still intact: wasmtime's store/engine destructors
+# otherwise run during shutdown, after their own module has been torn down, and print tracebacks.
+atexit.register(_actives.clear)
 _precision: str = "single" if os.environ.get("TINY_BCLIBC_PRECISION", "double").lower().startswith("s") else "double"
 
 
@@ -720,3 +728,38 @@ def MultiBC(bc_points: Iterable[tuple[float, float]], drag_type: int = DRAG_G7) 
     cd_buf = bytearray(_MAX_DRAG_PTS * 4)
     count = build_multibc(drag_type, pts_buf, mach_buf, cd_buf)
     return mach_buf, cd_buf, count
+
+
+# ── bench: FPU micro-benchmark ────────────────────────────────────────────────
+# The natmod's bench() runs native FPU loops; these are the same loops compiled into the module
+# (tbw_bench_*), so what is measured is how fast the WebAssembly host runs f32/f64 arithmetic --
+# useful for comparing hosts (wasmtime vs wasm3 vs JavaScriptCore without its JIT, ...).
+
+_BENCH_N_LAT: Final = 500_000  # x4 ops/iter
+_BENCH_N_THR: Final = 100_000  # x16 ops/iter
+
+
+def _bench_run(label: str, export: str, n: int, ops: int) -> None:
+    runner = _get_runner()
+    runner.call_scalar(export, n // 10)  # warmup
+    t0 = time.perf_counter()
+    runner.call_scalar(export, n)
+    dt = time.perf_counter() - t0
+    print(f"  {label:8s}: {n * ops / dt / 1e6:9.2f} MFLOPS   dt={dt:.3f}s")
+
+
+def bench() -> None:
+    """Print an FPU latency/throughput/peak micro-benchmark (MFLOPS) of the WebAssembly host."""
+    print("=" * 52)
+    print(f"tiny_bclibc FPU FLOPS Benchmark (wasm on {host()})")
+    print("=" * 52)
+    print("\nLatency-bound (volatile, sequential chain):")
+    _bench_run("DP", "tbw_bench_lat_dp", _BENCH_N_LAT, 4)
+    _bench_run("SP", "tbw_bench_lat_sp", _BENCH_N_LAT, 4)
+    print("\nThroughput (8 independent accumulators, volatile operands):")
+    _bench_run("DP", "tbw_bench_thr_dp", _BENCH_N_THR, 16)
+    _bench_run("SP", "tbw_bench_thr_sp", _BENCH_N_THR, 16)
+    print("\nPeak (8 independent accumulators, register-resident, add-only):")
+    _bench_run("DP", "tbw_bench_peak_dp", _BENCH_N_THR, 8)
+    _bench_run("SP", "tbw_bench_peak_sp", _BENCH_N_THR, 8)
+    print("=" * 52)

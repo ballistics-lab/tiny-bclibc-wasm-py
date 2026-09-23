@@ -49,6 +49,7 @@ __all__ = [
     "Shot",
     "Wind",
     "aim",
+    "bench",
     "build_multibc",
     "find_apex",
     "find_max_range",
@@ -276,3 +277,6 @@ def build_multibc(
     out_cd_buf: bytearray | memoryview,
 ) -> int: ...
 def MultiBC(bc_points: Iterable[tuple[float, float]], drag_type: int = 1) -> tuple[bytearray, bytearray, int]: ...
+
+# ── Benchmark ──────────────────────────────────────────────────────────────────
+def bench() -> None: ...

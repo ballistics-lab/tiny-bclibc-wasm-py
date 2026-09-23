@@ -117,4 +117,4 @@ no dependencies.
 - `integrate_stream` runs the callbacks after the trajectory is computed, so the whole
   trajectory costs one host call. An early stop still reports reason 5, but it doesn't skip the
   remaining integration.
-- No `bench()`: a native FPU benchmark means nothing through a WebAssembly host.
+- `bench()` measures the WebAssembly host's f32/f64 speed (the same loops, compiled to wasm), not the CPU directly. It is a way to compare hosts.
