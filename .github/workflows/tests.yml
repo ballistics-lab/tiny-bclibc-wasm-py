@@ -1,0 +1,180 @@
+name: Tests
+
+# Builds the package from source (which compiles the .wasm modules with the ziglang build requirement)
+# and runs the suite once per WebAssembly runtime, selected with pytest's --wasm-runtime (see
+# tests/conftest.py; a runtime that can't start fails the step, it is never skipped):
+#
+#   test:     every OS x CPython oldest/newest + PyPy, on wasmtime and on Node (both available on
+#             every runner).
+#   jsc:      WebKitGTK's JavaScriptCore -- the engine behind Pythonista's JSContext -- with its JIT
+#             and without it (iOS apps like Pythonista run it without), as the stand-in for an iOS
+#             device.
+#   coverage: combines the Ubuntu runs of all three runtimes (each one exercises its own host class
+#             in _runner.py) and uploads the result to Codecov.
+
+on:
+  push:
+    paths-ignore: &non-code-paths
+      - "**.md"
+      - "LICENSE"
+  pull_request:
+    paths-ignore: *non-code-paths
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.10", "3.14", "pypy3.11"]
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Coverage only from Ubuntu: one path layout to combine, and the runtimes behave the same
+      # elsewhere (which the other legs still verify).
+      COV_ARGS: ${{ matrix.os == 'ubuntu-latest' && '--cov --cov-report=' || '' }}
+      COV_ID: ${{ matrix.os }}-${{ matrix.python-version }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # setuptools_scm needs tags for the package version
+          submodules: recursive
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Fetch micropython-bclibc's natmod test suite
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/test_bclibc.py" \
+            https://raw.githubusercontent.com/ballistics-lab/micropython-bclibc/main/tests/test_bclibc.py
+          echo "BCLIBC_NATMOD_SUITE=$RUNNER_TEMP/test_bclibc.py" >> "$GITHUB_ENV"
+
+      - name: Build and install (compiles the .wasm modules)
+        run: uv sync --locked
+
+      - name: pytest --wasm-runtime wasmtime
+        run: uv run --locked pytest -v --wasm-runtime wasmtime $COV_ARGS
+        env:
+          COVERAGE_FILE: .coverage.${{ env.COV_ID }}-wasmtime
+
+      - name: pytest --wasm-runtime node
+        if: ${{ !cancelled() }} # run every runtime even if an earlier one failed
+        run: uv run --locked pytest -v --wasm-runtime node $COV_ARGS
+        env:
+          COVERAGE_FILE: .coverage.${{ env.COV_ID }}-node
+
+      - name: Example
+        run: uv run --locked python examples/basic.py
+
+      - name: Upload coverage data
+        if: ${{ matrix.os == 'ubuntu-latest' && !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-data-${{ env.COV_ID }}
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  jsc:
+    name: WebKitGTK JavaScriptCore
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Install JavaScriptCore + PyGObject
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q gir1.2-javascriptcoregtk-4.1 python3-gi
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+
+      - name: Fetch micropython-bclibc's natmod test suite
+        run: |
+          curl -sSfL -o "$RUNNER_TEMP/test_bclibc.py" \
+            https://raw.githubusercontent.com/ballistics-lab/micropython-bclibc/main/tests/test_bclibc.py
+          echo "BCLIBC_NATMOD_SUITE=$RUNNER_TEMP/test_bclibc.py" >> "$GITHUB_ENV"
+
+      # python3-gi is built for the distribution's own Python, so use that interpreter with its
+      # site-packages visible.
+      - name: Build and install into a system-site-packages venv
+        run: |
+          uv venv --system-site-packages --python /usr/bin/python3 .venv
+          uv pip install -e . pytest pytest-cov
+
+      - name: pytest --wasm-runtime gi-jsc (JIT on)
+        run: .venv/bin/python -m pytest -v --wasm-runtime gi-jsc --cov --cov-report=
+        env:
+          JSC_useJIT: "true"
+          COVERAGE_FILE: .coverage.jsc-jit
+
+      - name: pytest --wasm-runtime gi-jsc (JIT off, as on iOS)
+        if: ${{ !cancelled() }}
+        run: .venv/bin/python -m pytest -v --wasm-runtime gi-jsc --cov --cov-report=
+        env:
+          JSC_useJIT: "false"
+          COVERAGE_FILE: .coverage.jsc-nojit
+
+      - name: Example
+        run: TINY_BCLIBC_HOST=gi-jsc .venv/bin/python examples/basic.py
+
+      - name: Upload coverage data
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-data-jsc
+          path: .coverage.*
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  coverage:
+    name: Combine coverage + Codecov
+    needs: [test, jsc]
+    if: ${{ !cancelled() && github.actor != 'dependabot[bot]' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Codecov OIDC upload, no token secret needed
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+
+      - name: Download coverage data
+        uses: actions/download-artifact@v8
+        with:
+          pattern: coverage-data-*
+          merge-multiple: true
+
+      - name: Combine coverage
+        run: |
+          uvx coverage combine
+          uvx coverage report
+          uvx coverage xml
+          uvx coverage report --format=markdown >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload to Codecov
+        uses: codecov/codecov-action@v7
+        with:
+          use_oidc: true
+          files: ./coverage.xml
+          fail_ci_if_error: true

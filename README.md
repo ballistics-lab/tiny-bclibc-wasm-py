@@ -69,10 +69,18 @@ specific module.
 ## Test
 
 ```bash
-uv run pytest                              # everything below
+uv run pytest                              # everything below, on the automatically picked runtime
+uv run pytest --wasm-runtime node          # ... on one specific runtime: wasmtime | node | gi-jsc
+uv run pytest --cov                        # with coverage
 uv run python tests/run_natmod_suite.py    # just the natmod suite, current host/precision
 uv run pyright && uv run ruff check        # types, lint
 ```
+
+If the runtime passed to `--wasm-runtime` can't start, the run stops with an error; the tests are
+never silently skipped. CI (`.github/workflows/tests.yml`) runs the suite on wasmtime and on Node
+on Linux, Windows and macOS with CPython 3.10, CPython 3.14 and PyPy 3.11. It also runs it on
+WebKitGTK JavaScriptCore with and without JIT, then combines coverage from all three runtimes and
+uploads it to Codecov.
 
 `pytest` checks that every available host returns identical results (`tests/test_hosts.py`). It
 also runs micropython-bclibc's `tests/test_bclibc.py` unmodified in both precisions
