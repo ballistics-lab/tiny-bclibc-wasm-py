@@ -63,7 +63,7 @@ installed beforehand. The package version comes from git tags via `setuptools_sc
 git submodule update --init
 uv sync                        # editable install; compiles src/tiny_bclibc/tiny_bclibc_{dp,sp}.wasm
 uv build                       # sdist + wheel (the wheel is built from the sdist, so it compiles too)
-uv run python build_wasm.py    # just recompile the modules
+uv run --with ziglang python build_wasm.py    # just recompile the modules (ziglang only exists in the isolated build env)
 ```
 
 `uv sync` recompiles the modules when the wrapper sources, the headers or the build hooks change.

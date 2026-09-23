@@ -4,7 +4,7 @@ name: Tests
 # and runs the suite once per WebAssembly runtime, selected with pytest's --wasm-runtime (see
 # tests/conftest.py; a runtime that can't start fails the step, it is never skipped):
 #
-#   test:     every OS x CPython oldest/newest + PyPy, on wasmtime and on Node (both available on
+#   test:     every OS x CPython oldest/newest (also free-threaded 3.14t) + PyPy, on wasmtime and on Node (both available on
 #             every runner), and on wasm3 where pywasm3 installs (CPython 3.11+; built from git).
 #   jsc:      WebKitGTK's JavaScriptCore -- the engine behind Pythonista's JSContext -- with its JIT
 #             and without it (iOS apps like Pythonista run it without), as the stand-in for an iOS
@@ -36,7 +36,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.10", "3.14", "pypy3.11"]
+        python-version: ["3.10", "3.14", "3.14t", "pypy3.11"]
     defaults:
       run:
         shell: bash
@@ -77,9 +77,10 @@ jobs:
           COVERAGE_FILE: .coverage.${{ env.COV_ID }}-node
 
       - name: pytest --wasm-runtime wasm3
-        # pywasm3 is a dev dependency only on CPython >= 3.11 (see pyproject.toml)
+        # pywasm3 is a dev dependency only on CPython >= 3.11 (see pyproject.toml). Warnings are errors so
+        # that, on 3.14t, an extension turning the GIL back on at import fails the run.
         if: ${{ !cancelled() && matrix.python-version != '3.10' && !startsWith(matrix.python-version, 'pypy') }}
-        run: uv run --locked pytest -v --wasm-runtime wasm3 $COV_ARGS
+        run: uv run --locked pytest -v -W error::RuntimeWarning --wasm-runtime wasm3 $COV_ARGS
         env:
           COVERAGE_FILE: .coverage.${{ env.COV_ID }}-wasm3
 

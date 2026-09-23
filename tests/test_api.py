@@ -5,6 +5,8 @@ pytest's own interpreter, against reference values from py-ballisticcalc / the n
 """
 
 import math
+import sys
+import sysconfig
 
 import pytest
 
@@ -133,3 +135,13 @@ def test_bench_runs_every_loop(capsys):
     out = capsys.readouterr().out
     assert out.count("MFLOPS") == 6
     assert "wasm on " + bc.host() in out
+
+
+@pytest.mark.skipif(not sysconfig.get_config_var("Py_GIL_DISABLED"), reason="not a free-threaded build")
+def test_free_threaded_build_keeps_the_gil_disabled():
+    # An extension that doesn't declare Py_mod_gil (pywasm3 before 3790b9b) silently turns the GIL back on
+    # at import; loading the module through the selected host must not.
+    bc.version()
+    # sys._is_gil_enabled() exists only on 3.13+, and this test runs only on free-threaded builds (3.13t+).
+    is_gil_enabled = getattr(sys, "_is_gil_enabled", lambda: True)
+    assert not is_gil_enabled()

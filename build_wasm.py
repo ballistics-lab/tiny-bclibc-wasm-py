@@ -14,6 +14,7 @@ Compiler: $TINY_BCLIBC_CC if set (e.g. "clang --sysroot=/opt/wasi-sdk/share/wasi
 WebAssembly host can instantiate it with an empty import object.
 """
 
+import importlib.util
 import os
 import shlex
 import subprocess
@@ -55,6 +56,11 @@ def _compiler():
     cc = os.environ.get("TINY_BCLIBC_CC")
     if cc:
         return shlex.split(cc) + ["--target=wasm32-wasi"]
+    if importlib.util.find_spec("ziglang") is None:
+        raise SystemExit(
+            "ziglang is not installed in this environment (builds get it from [build-system].requires). "
+            "Run by hand as `uv run --with ziglang python build_wasm.py`, or set TINY_BCLIBC_CC."
+        )
     return [sys.executable, "-m", "ziglang", "cc", "-target", "wasm32-wasi"]
 
 

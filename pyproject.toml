@@ -53,7 +53,6 @@ dev = [
     "setuptools>=84.0.0",
     "setuptools-scm>=10.2.3",
     "wasmtime>=49.0.0",
-    "ziglang>=0.16.0",
     # wasm3 host; CPython 3.11+ only, and taken from git (see [tool.uv.sources])
     "pywasm3; python_version >= '3.11' and platform_python_implementation == 'CPython'",
 ]
@@ -61,7 +60,7 @@ dev = [
 [tool.uv.sources]
 # pywasm3's PyPI release is years behind the API Wasm3Runner uses; build it from the repo (uv also
 # fetches its wasm3 submodule). Needs a C compiler.
-pywasm3 = { git = "https://github.com/wasm3/pywasm3" }
+pywasm3 = { git = "https://github.com/wasm3/pywasm3", rev = "fce65fd7fdffd8b6866a4a6f7612a0a5bc28b018" }  # Py_mod_gil support (3790b9b) + merge
 
 
 [tool.pytest.ini_options]
