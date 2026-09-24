@@ -1,9 +1,9 @@
 name: Publish
 
 # On a v* tag: build the sdist and the (pure-Python, py3-none-any) wheel, publish them to PyPI, and
-# draft a GitHub release carrying them plus what non-pip users need:
-#   tiny_bclibc_dp.wasm / tiny_bclibc_sp.wasm   the modules themselves, for any other host
-#   tiny_bclibc-pythonista.zip                  the ready-to-copy package folder for Pythonista
+# draft a GitHub release carrying them plus the modules themselves, for any other host:
+#   tiny_bclibc_dp.wasm / tiny_bclibc_sp.wasm
+# (Pythonista and PythonIDE install the same wheel as everywhere else.)
 #
 # workflow_dispatch builds (and optionally publishes to TestPyPI) without a tag.
 #
@@ -45,7 +45,7 @@ jobs:
           submodules: true # bclibc + py-ballisticcalc; not recursive: py-ballisticcalc's own bclibc submodule is only for its C extensions
 
       - name: Install uv
-        uses: astral-sh/setup-uv@bec219d24cd3e171d82865faccec33120bb574f4
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7
 
       - name: Build (the wheel is built from the sdist, so this proves the sdist builds on its own)
         env:
@@ -67,19 +67,15 @@ jobs:
           assert abs(angle - 0.002502) < 1e-4
           "
 
-      - name: Release extras (standalone .wasm, Pythonista zip)
+      - name: Release extras (standalone .wasm)
         run: |
           mkdir -p extras
           python3 - <<'EOF'
           import glob, zipfile
           wheel = zipfile.ZipFile(glob.glob("dist/*.whl")[0])
-          with zipfile.ZipFile("extras/tiny_bclibc-pythonista.zip", "w", zipfile.ZIP_DEFLATED) as z:
-              for name in wheel.namelist():
-                  if name.startswith("tiny_bclibc/"):
-                      z.writestr(name, wheel.read(name))
-                      if name.endswith(".wasm"):
-                          open("extras/" + name.split("/")[-1], "wb").write(wheel.read(name))
-              z.write("examples/basic.py", "basic.py")
+          for name in wheel.namelist():
+              if name.startswith("tiny_bclibc/") and name.endswith(".wasm"):
+                  open("extras/" + name.split("/")[-1], "wb").write(wheel.read(name))
           EOF
           ls -l dist extras
 

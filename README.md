@@ -71,10 +71,11 @@ pip install tiny-bclibc-wasm[pybc]
 pip install tiny-bclibc-wasm[wasmtime,pybc]
 ```
 
-### Pythonista (iOS)
+### Pythonista and PythonIDE (iOS)
 
-Download `tiny_bclibc-pythonista.zip` from the [latest release][releases] and unpack it into
-Pythonista's files, next to your script. See [Pythonista](#pythonista).
+The ordinary wheel: it is pure Python (`py3-none-any`) with the `.wasm` modules inside. In StaSh (Pythonista) or
+PythonIDE's pip, `pip install tiny-bclibc-wasm`; it pulls in [wasmhost](https://github.com/ballistics-lab/py-wasmhost),
+which runs the WebAssembly. See [Pythonista](#pythonista).
 
 ## Typing
 
@@ -170,15 +171,15 @@ specific module.
 ## Test
 
 ```bash
-uv run pytest                              # everything below, on the automatically picked runtime
-uv run pytest --wasm-runtime node          # ... on one runtime: wasmtime | wasm3 | node | gi-jsc
+uv run pytest                              # everything below, on the automatically picked backend
+uv run pytest --wasm-backend node          # ... on one backend: wasmtime | wasm3 | node | gi-jsc
 uv run pytest --cov                        # with coverage
 uv run python tests/run_natmod_suite.py    # just the natmod suite, current host/precision
 uv run pyright && uv run ruff check        # types, lint
 uv run pytest py-ballisticcalc/tests --engine=tiny_bclibc_wasm+tsitouras-dp    # py-ballisticcalc's suite (Python 3.11+)
 ```
 
-If the runtime passed to `--wasm-runtime` can't start, the run stops with an error; the tests are
+If the backend passed to `--wasm-backend` can't start, the run stops with an error; the tests are
 never silently skipped. CI (`.github/workflows/tests.yml`) runs the suite on wasmtime and on Node
 on Linux, Windows and macOS with CPython 3.10, CPython 3.14 and PyPy 3.11, and on wasm3 wherever
 pywasm3 installs (CPython 3.11+). It also runs it on
@@ -198,10 +199,10 @@ use `tracemalloc`, and PyPy doesn't have it.
 
 ## Pythonista
 
-Copy the `tiny_bclibc/` folder from `tiny_bclibc-pythonista.zip` (a release asset), or
-`src/tiny_bclibc/` with the built `.wasm` files, into Pythonista, next to your script, then
-`import tiny_bclibc as bc`. JSContext is picked automatically. The package is plain Python and needs
-no dependencies.
+Install it with pip (see above), then `import tiny_bclibc as bc`. JSContext is picked automatically. The
+package is plain Python; its one dependency is `wasmhost`, which has a self-test to run on the device
+(`import wasmhost; wasmhost.selftest()`) that reports the Objective-C bridge, `WebAssembly` and `BigInt` and the
+cost of a call. It has passed on Pythonista (StaSh, Python 3.10.4) and on PythonIDE (Python 3.14.7).
 
 ## Differences from the natmod
 
