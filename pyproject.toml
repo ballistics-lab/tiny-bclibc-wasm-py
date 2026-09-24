@@ -13,7 +13,15 @@ authors = [{ name = "o-murphy", email = "thehelixpg@gmail.com" }]
 license = "LGPL-3.0-only"
 license-files = ["LICENSE"]
 requires-python = ">=3.10"
-keywords = ["ballistics", "ballistic calculator", "ballistic solver", "webassembly", "wasm", "pythonista", "bclibc"]
+keywords = [
+    "ballistics",
+    "ballistic calculator",
+    "ballistic solver",
+    "webassembly",
+    "wasm",
+    "pythonista",
+    "bclibc",
+]
 classifiers = [
     "Intended Audience :: Developers",
     "Natural Language :: English",
@@ -33,7 +41,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
-dependencies = ["wasmhost>=0.0.1b1"]
+dependencies = ["wasmhost>=0.0.1b2"]
 
 [project.optional-dependencies]
 # In-process WebAssembly host for desktops; without it the package uses Node or WebKitGTK
