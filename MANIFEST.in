@@ -2,9 +2,10 @@
 # From the bclibc submodule only what build_wasm.py compiles: setuptools_scm would otherwise ship all
 # of it (the C++ engine, its CI, ...), and without the explicit grafts a fresh clone that setuptools_scm
 # doesn't list would ship none of it.
-include build_wasm.py setup.py README.md
+include build_wasm.py setup.py README.md LICENSE
 graft src
 prune bclibc
+prune py-ballisticcalc
 graft bclibc/tiny_bclibc/include
 graft bclibc/tiny_bclibc/wasm
 include bclibc/LICENSE
