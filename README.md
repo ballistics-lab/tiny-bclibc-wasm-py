@@ -53,6 +53,42 @@ All the JS hosts run one shared glue snippet, and wasmtime calls the exports dir
 `tests/test_hosts.py` checks that every host available on the machine returns bit-identical
 results.
 
+## py-ballisticcalc engine
+
+`tiny_bclibc.pybc` makes tiny_bclibc an integration engine for
+[py-ballisticcalc](https://github.com/o-murphy/py-ballisticcalc) (3.0.0b1 or newer, Python 3.11+).
+The package registers it as a py-ballisticcalc entry point, so installing it is enough:
+
+```bash
+uv add "tiny-bclibc-wasm[pybc]"
+```
+
+```python
+from py_ballisticcalc import Calculator
+
+calc = Calculator(engine="tiny_bclibc_wasm+tsitouras")
+```
+
+| Engine | Class | Name (py-ballisticcalc 3.0.0b3+) | Legacy name (3.0.0b1+, deprecated in b3) |
+|---|---|---|---|
+| double precision | `TinyBclibcWasmTsitourasEngineDP` | `tiny_bclibc_wasm+tsitouras` | `tiny_bclibc_wasm_engine` |
+| single precision | `TinyBclibcWasmTsitourasEngineSP` | `tiny_bclibc_wasm+tsitouras-sp` | `tiny_bclibc_wasm_sp_engine` |
+
+The engine runs on the same WebAssembly host as the rest of the package (see above). It does not
+support `dense_output`. The single-precision engine has float32's limits: 18 of py-ballisticcalc's
+tests fail on it. Pythonista has no entry points, so there you pass the import path,
+`Calculator(engine="tiny_bclibc.pybc:TinyBclibcWasmTsitourasEngineDP")`; see
+`examples/py_ballisticcalc_engine.py`.
+
+The engine is tested with py-ballisticcalc's own suite. The `py-ballisticcalc` submodule pins py-ballisticcalc,
+and `uv sync` installs it from there, so the package and its `tests/` always come from one commit:
+
+```bash
+git submodule update --init            # bclibc + py-ballisticcalc
+uv run pytest py-ballisticcalc/tests --engine=tiny_bclibc_wasm+tsitouras
+git -C py-ballisticcalc checkout v3.0.0 && uv lock # move to another py-ballisticcalc release
+```
+
 ## Build
 
 The build compiles the `.wasm` modules itself: `setup.py` runs `build_wasm.py` on every build.
@@ -83,6 +119,7 @@ uv run pytest --wasm-runtime node          # ... on one runtime: wasmtime | wasm
 uv run pytest --cov                        # with coverage
 uv run python tests/run_natmod_suite.py    # just the natmod suite, current host/precision
 uv run pyright && uv run ruff check        # types, lint
+uv run pytest py-ballisticcalc/tests --engine=tiny_bclibc_wasm+tsitouras    # py-ballisticcalc's suite (Python 3.11+)
 ```
 
 If the runtime passed to `--wasm-runtime` can't start, the run stops with an error; the tests are
@@ -90,7 +127,8 @@ never silently skipped. CI (`.github/workflows/tests.yml`) runs the suite on was
 on Linux, Windows and macOS with CPython 3.10, CPython 3.14 and PyPy 3.11, and on wasm3 wherever
 pywasm3 installs (CPython 3.11+). It also runs it on
 WebKitGTK JavaScriptCore with and without JIT, then combines coverage from all three runtimes and
-uploads it to Codecov.
+uploads it to Codecov. Every leg on Python 3.11+ also runs py-ballisticcalc's suite on the
+`tiny_bclibc_wasm+tsitouras` engine.
 
 `pytest` checks that every available host returns identical results (`tests/test_hosts.py`). It
 also runs micropython-bclibc's `tests/test_bclibc.py` unmodified in both precisions

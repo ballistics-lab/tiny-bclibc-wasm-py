@@ -66,3 +66,12 @@ repos:
         language: system
         pass_filenames: false
         files: '(\.py|\.c|\.h|pyproject\.toml)$'
+
+      - id: uv-pytest-pybc
+        name: pytest py-ballisticcalc suite (tiny_bclibc_wasm+tsitouras)
+        entry: uv
+        # py-ballisticcalc's own tests on tiny_bclibc.pybc, from the py-ballisticcalc submodule (about a second).
+        args: ["run", "pytest", "py-ballisticcalc/tests", "-q", "--engine=tiny_bclibc_wasm+tsitouras"]
+        language: system
+        pass_filenames: false
+        files: '(\.py|\.c|\.h|pyproject\.toml|^py-ballisticcalc)$'

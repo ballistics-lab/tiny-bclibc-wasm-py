@@ -5,6 +5,7 @@
 include build_wasm.py setup.py README.md
 graft src
 prune bclibc
+prune py-ballisticcalc
 graft bclibc/tiny_bclibc/include
 graft bclibc/tiny_bclibc/wasm
 include bclibc/LICENSE
