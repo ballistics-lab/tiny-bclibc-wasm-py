@@ -161,3 +161,12 @@ no dependencies.
   trajectory costs one host call. An early stop still reports reason 5, but it doesn't skip the
   remaining integration.
 - `bench()` measures the WebAssembly host's f32/f64 speed (the same loops, compiled to wasm), not the CPU directly. It is a way to compare hosts.
+
+## License
+
+Copyright (C) 2026 Dmytro Yaroshenko (o-murphy)
+
+This library is free software: you can redistribute it and/or modify it under the terms of the
+**GNU Lesser General Public License v3.0** (see [LICENSE](LICENSE)), the same license as
+[bclibc](https://github.com/ballistics-lab/bclibc), whose `tiny_bclibc` the shipped `.wasm` modules
+are compiled from.
