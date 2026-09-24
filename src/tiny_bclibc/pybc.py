@@ -7,21 +7,21 @@ never imports this module.
 
 Engines, registered as py-ballisticcalc entry points (see pyproject.toml):
     TinyBclibcWasmTsitourasEngineDP: real_t = double.
-        "tiny_bclibc_wasm+tsitouras" (py-ballisticcalc >= 3.0.0b3), "tiny_bclibc_wasm_engine" (legacy name)
+        "tiny_bclibc_wasm+tsitouras-dp" (py-ballisticcalc >= 3.0.0b3), "tiny_bclibc_wasm_engine" (legacy name)
     TinyBclibcWasmTsitourasEngineSP: real_t = float, with a looser default `cZeroFindingAccuracy`
         (1e-3 ft) and float32's limits (18 of py-ballisticcalc's tests fail on it).
         "tiny_bclibc_wasm+tsitouras-sp", "tiny_bclibc_wasm_sp_engine" (legacy name)
     Both can live in one process: each call selects its own precision (`tiny_bclibc.set_precision`).
 
     from py_ballisticcalc import Calculator
-    calc = Calculator(engine="tiny_bclibc_wasm+tsitouras")
+    calc = Calculator(engine="tiny_bclibc_wasm+tsitouras-dp")
 
 The engine runs on whichever WebAssembly host the package picks (`TINY_BCLIBC_HOST`,
 `tiny_bclibc.set_host`). In Pythonista, which has no entry points, name it by import path:
 `Calculator(engine="tiny_bclibc.pybc:TinyBclibcWasmTsitourasEngineDP")` -- see examples/py_ballisticcalc_engine.py.
 
 Tested against py-ballisticcalc's own suite (the `py-ballisticcalc` submodule):
-    uv run pytest py-ballisticcalc/tests --engine=tiny_bclibc_wasm+tsitouras
+    uv run pytest py-ballisticcalc/tests --engine=tiny_bclibc_wasm+tsitouras-dp
 
 Returns the same results as py-ballisticcalc's `examples/tiny_bclibc_ctypes` engines (tiny_bclibc as a
 native library through ctypes): same tiny_bclibc calls, same Python-side row sorting/finalizing.

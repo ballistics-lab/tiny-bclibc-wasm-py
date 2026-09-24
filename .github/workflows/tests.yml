@@ -86,10 +86,10 @@ jobs:
         env:
           COVERAGE_FILE: .coverage.${{ env.COV_ID }}-wasm3
 
-      - name: py-ballisticcalc suite on tiny_bclibc_wasm+tsitouras (wasmtime)
+      - name: py-ballisticcalc suite on tiny_bclibc_wasm+tsitouras-dp (wasmtime)
         # py-ballisticcalc (a dev dependency from the py-ballisticcalc submodule) needs Python 3.11+.
         if: ${{ !cancelled() && matrix.python-version != '3.10' }}
-        run: uv run --locked pytest py-ballisticcalc/tests -v --engine=tiny_bclibc_wasm+tsitouras $COV_ARGS
+        run: uv run --locked pytest py-ballisticcalc/tests -v --engine=tiny_bclibc_wasm+tsitouras-dp $COV_ARGS
         env:
           TINY_BCLIBC_HOST: wasmtime
           COVERAGE_FILE: .coverage.${{ env.COV_ID }}-pybc

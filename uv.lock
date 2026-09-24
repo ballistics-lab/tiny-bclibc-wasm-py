@@ -554,6 +554,12 @@ wheels = [
 [[package]]
 name = "py-ballisticcalc"
 source = { directory = "py-ballisticcalc" }
+resolution-markers = [
+    "python_full_version >= '3.15' and platform_python_implementation == 'CPython'",
+    "python_full_version >= '3.15' and platform_python_implementation != 'CPython'",
+    "python_full_version >= '3.11' and python_full_version < '3.15' and platform_python_implementation == 'CPython'",
+    "python_full_version >= '3.11' and python_full_version < '3.15' and platform_python_implementation != 'CPython'",
+]
 dependencies = [
     { name = "deprecated" },
     { name = "typing-extensions" },
@@ -633,6 +639,23 @@ dev = [
 test = [
     { name = "pytest", specifier = ">=9.1.1" },
     { name = "pytest-cov", specifier = ">=7.1.0" },
+]
+
+[[package]]
+name = "py-ballisticcalc"
+version = "2.2.10"
+source = { registry = "https://pypi.org/simple" }
+resolution-markers = [
+    "python_full_version < '3.11'",
+]
+dependencies = [
+    { name = "deprecated" },
+    { name = "tomli" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/ea/bf/65d677f1dc1d93f302b805f52cf67d5602233303c28cf332e448fe4b29f6/py_ballisticcalc-2.2.10.tar.gz", hash = "sha256:ebf018f21287d0fac5841350eb870731851c95d0ceef188e319a3674e2a6e04b", size = 6633304, upload-time = "2026-04-30T20:20:42.255Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f4/e1/ed2e40b5b73cbf5415d298b9b9914345600b88fe26dd49a06f4de453217c/py_ballisticcalc-2.2.10-py3-none-any.whl", hash = "sha256:61a32977d3d3e2b65eb46c4d0e143c02abc015c6e33c607b6111762ead1019ed", size = 141079, upload-time = "2026-04-30T20:17:59.101Z" },
 ]
 
 [[package]]
@@ -826,7 +849,8 @@ source = { editable = "." }
 
 [package.optional-dependencies]
 pybc = [
-    { name = "py-ballisticcalc", marker = "python_full_version >= '3.11'" },
+    { name = "py-ballisticcalc", source = { directory = "py-ballisticcalc" }, marker = "python_full_version >= '3.11'" },
+    { name = "py-ballisticcalc", version = "2.2.10", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "typing-extensions" },
 ]
 wasmtime = [
@@ -837,7 +861,7 @@ wasmtime = [
 dev = [
     { name = "mypy", marker = "platform_python_implementation == 'CPython'" },
     { name = "pre-commit" },
-    { name = "py-ballisticcalc", marker = "python_full_version >= '3.11'" },
+    { name = "py-ballisticcalc", source = { directory = "py-ballisticcalc" }, marker = "python_full_version >= '3.11'" },
     { name = "pyright" },
     { name = "pytest" },
     { name = "pytest-cov" },
@@ -851,6 +875,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "py-ballisticcalc", marker = "python_full_version >= '3.11' and extra == 'pybc'", directory = "py-ballisticcalc" },
+    { name = "py-ballisticcalc", marker = "python_full_version < '3.11' and extra == 'pybc'", specifier = ">=2.2.10" },
     { name = "typing-extensions", marker = "extra == 'pybc'" },
     { name = "wasmtime", marker = "extra == 'wasmtime'" },
 ]

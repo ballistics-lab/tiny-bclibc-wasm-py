@@ -1,7 +1,7 @@
 """tiny_bclibc.pybc is registered with py-ballisticcalc under both entry-point layouts.
 
 The engines' behaviour is tested by py-ballisticcalc's own suite (`uv run pytest py-ballisticcalc/tests
---engine=tiny_bclibc_wasm+tsitouras`); this only checks that each name resolves to the right class.
+--engine=tiny_bclibc_wasm+tsitouras-dp`); this only checks that each name resolves to the right class.
 """
 
 import warnings
@@ -18,8 +18,8 @@ from tiny_bclibc import pybc
 @pytest.mark.parametrize(
     ("name", "engine"),
     [
-        ("tiny_bclibc_wasm+tsitouras", pybc.TinyBclibcWasmTsitourasEngineDP),
-        ("tiny_bclibc_wasm.tsitouras", pybc.TinyBclibcWasmTsitourasEngineDP),
+        ("tiny_bclibc_wasm+tsitouras-dp", pybc.TinyBclibcWasmTsitourasEngineDP),
+        ("tiny_bclibc_wasm.tsitouras-dp", pybc.TinyBclibcWasmTsitourasEngineDP),
         ("tiny_bclibc_wasm+tsitouras-sp", pybc.TinyBclibcWasmTsitourasEngineSP),
         ("tiny_bclibc.pybc:TinyBclibcWasmTsitourasEngineDP", pybc.TinyBclibcWasmTsitourasEngineDP),
         # legacy flat group: the only one py-ballisticcalc 3.0.0b1/b2 read

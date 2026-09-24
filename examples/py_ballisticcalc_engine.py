@@ -9,7 +9,7 @@ Desktop:
     TINY_BCLIBC_HOST=node python examples/py_ballisticcalc_engine.py    # pick the host yourself
 
 With the package installed, py-ballisticcalc also finds the engine by name:
-    Calculator(engine="tiny_bclibc_wasm+tsitouras")
+    Calculator(engine="tiny_bclibc_wasm+tsitouras-dp")
 
 Pythonista has no entry points, so this names the class by its import path, which py-ballisticcalc
 loads directly. Copy these into Pythonista's files, next to this script:
