@@ -1,4 +1,4 @@
-"""In-process API checks on the runtime selected by --wasm-runtime (see conftest.py).
+"""In-process API checks on the backend selected by --wasm-backend (see conftest.py).
 
 The natmod suite (test_natmod_suite.py) covers the API broadly but in a subprocess; these run inside
 pytest's own interpreter, against reference values from py-ballisticcalc / the natmod suite.
@@ -29,10 +29,10 @@ def shot():
     )
 
 
-def test_runtime_is_the_requested_one(pytestconfig):
-    runtime = pytestconfig.getoption("--wasm-runtime")
-    if runtime:
-        assert bc.host() == runtime
+def test_backend_is_the_requested_one(pytestconfig):
+    backend = pytestconfig.getoption("--wasm-backend")
+    if backend:
+        assert bc.host() == backend
 
 
 def test_zero_matches_reference(shot):
