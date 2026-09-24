@@ -1,5 +1,19 @@
 # tiny-bclibc-wasm
 
+LGPL WebAssembly build of the tiny_bclibc ballistic solver for CPython, PyPy and Pythonista.
+
+[![license]][LGPL-3]
+[![pypi]][PyPiUrl]
+[![coverage]][CodecovUrl]
+[![py-versions]][sources]
+[![Made in Ukraine]][SWUBadge]
+
+[![powered by bclibc]][bclibc]
+[![powered by webassembly]][WebAssembly]
+
+[![Tests](https://github.com/ballistics-lab/tiny-bclibc-wasm-py/actions/workflows/tests.yml/badge.svg)](https://github.com/ballistics-lab/tiny-bclibc-wasm-py/actions/workflows/tests.yml)
+[![Pre-commit](https://github.com/ballistics-lab/tiny-bclibc-wasm-py/actions/workflows/pre-commit.yml/badge.svg)](https://github.com/ballistics-lab/tiny-bclibc-wasm-py/actions/workflows/pre-commit.yml)
+
 `import tiny_bclibc` for **CPython, PyPy and Pythonista**, with the same API as the natmod `.mpy`
 from [micropython-bclibc](https://github.com/ballistics-lab/micropython-bclibc). A script written
 for a MicroPython board runs here unchanged.
@@ -24,6 +38,43 @@ See `examples/basic.py`, and micropython-bclibc's README ("Module API", "Usage e
 full API: `Shot`, `Wind`, `Config`, `Request`, `integrate`, `integrate_stream`, `integrate_at`,
 `find_zero_angle`, `zero_point`, `zero`, `aim`, `fire`, `find_apex`, `find_max_range`, `MultiBC`,
 and the `TRAJ_FLAG_*`, `T_*` and `INTERP_*` constants.
+
+## Installation
+
+### uv
+
+```shell
+uv add tiny-bclibc-wasm
+
+# With wasmtime, the in-process WebAssembly host (otherwise Node or WebKitGTK JavaScriptCore is used)
+uv add tiny-bclibc-wasm[wasmtime]
+
+# As a py-ballisticcalc engine (see "py-ballisticcalc engine" below)
+uv add tiny-bclibc-wasm[pybc]
+
+# Everything
+uv add tiny-bclibc-wasm[wasmtime,pybc]
+```
+
+### pip
+
+```shell
+pip install tiny-bclibc-wasm
+
+# With wasmtime, the in-process WebAssembly host (otherwise Node or WebKitGTK JavaScriptCore is used)
+pip install tiny-bclibc-wasm[wasmtime]
+
+# As a py-ballisticcalc engine (see "py-ballisticcalc engine" below)
+pip install tiny-bclibc-wasm[pybc]
+
+# Everything
+pip install tiny-bclibc-wasm[wasmtime,pybc]
+```
+
+### Pythonista (iOS)
+
+Download `tiny_bclibc-pythonista.zip` from the [latest release][releases] and unpack it into
+Pythonista's files, next to your script. See [Pythonista](#pythonista).
 
 ## Typing
 
@@ -147,7 +198,8 @@ use `tracemalloc`, and PyPy doesn't have it.
 
 ## Pythonista
 
-Copy `src/tiny_bclibc/` (with the built `.wasm` files) into Pythonista, next to your script, then
+Copy the `tiny_bclibc/` folder from `tiny_bclibc-pythonista.zip` (a release asset), or
+`src/tiny_bclibc/` with the built `.wasm` files, into Pythonista, next to your script, then
 `import tiny_bclibc as bc`. JSContext is picked automatically. The package is plain Python and needs
 no dependencies.
 
@@ -170,3 +222,46 @@ This library is free software: you can redistribute it and/or modify it under th
 **GNU Lesser General Public License v3.0** (see [LICENSE](LICENSE)), the same license as
 [bclibc](https://github.com/ballistics-lab/bclibc), whose `tiny_bclibc` the shipped `.wasm` modules
 are compiled from.
+
+[sources]:
+https://github.com/ballistics-lab/tiny-bclibc-wasm-py
+
+[releases]:
+https://github.com/ballistics-lab/tiny-bclibc-wasm-py/releases/latest
+
+[license]:
+https://img.shields.io/github/license/ballistics-lab/tiny-bclibc-wasm-py?style=flat-square
+
+[LGPL-3]:
+https://opensource.org/licenses/LGPL-3.0-only
+
+[pypi]:
+https://img.shields.io/pypi/v/tiny-bclibc-wasm?style=flat-square&logo=pypi
+
+[PyPiUrl]:
+https://pypi.org/project/tiny-bclibc-wasm/
+
+[coverage]:
+https://codecov.io/gh/ballistics-lab/tiny-bclibc-wasm-py/graph/badge.svg
+
+[CodecovUrl]:
+https://codecov.io/gh/ballistics-lab/tiny-bclibc-wasm-py
+
+[py-versions]:
+https://img.shields.io/pypi/pyversions/tiny-bclibc-wasm?style=flat-square
+
+[Made in Ukraine]:
+https://img.shields.io/badge/made_in-Ukraine-ffd700.svg?labelColor=0057b7&style=flat-square
+
+[SWUBadge]:
+https://stand-with-ukraine.pp.ua
+
+[bclibc]: https://github.com/ballistics-lab/bclibc
+
+[powered by bclibc]:
+https://img.shields.io/badge/bclibc-0d1228?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPD94bWwgdmVyc2lvbj0iMS4wIiBzdGFuZGFsb25lPSJubyI%2FPgo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDIwMDEwOTA0Ly9FTiIgImh0dHA6Ly93d3cudzMub3JnL1RSLzIwMDEvUkVDLVNWRy0yMDAxMDkwNC9EVEQvc3ZnMTAuZHRkIj4KPHN2ZyB2ZXJzaW9uPSIxLjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgd2lkdGg9IjEwMjQuMDAwMDAwcHQiIGhlaWdodD0iMTAyNC4wMDAwMDBwdCIgdmlld0JveD0iMCAwIDEwMjQuMDAwMDAwIDEwMjQuMDAwMDAwIiBwcmVzZXJ2ZUFzcGVjdFJhdGlvPSJ4TWlkWU1pZCBtZWV0Ij4KCTxjaXJjbGUgY3g9IjUxMiIgY3k9IjUxMiIgcj0iNTEyIiBmaWxsPSIjMGQxMjI4IiAvPgoJPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTEwMCwxMTI0KSBzY2FsZSgwLjEyMDAwMCwtMC4xMjAwMDApIiBmaWxsPSIjRkZGRkZGIiBzdHJva2U9Im5vbmUiPgoJCTxwYXRoIGQ9Ik01MDU1IDgwNzEgYy0xNjcgLTMzMyAtMjczIC03NjggLTI5MiAtMTE5OCBsLTYgLTE0MyAzNDYgMCAzNDcgMCAwCjYzIGMwIDI3NSAtODAgNzMxIC0xNzUgMTAwNyAtMzkgMTEyIC0xNDUgMzQzIC0xNjMgMzU0IC03IDQgLTI5IC0yOCAtNTcgLTgzegptLTE1IC0yODkgYy00NiAtMjI1IC05MCAtNjYzIC05MCAtODk0IDAgLTEwNCAtMiAtMTA4IC02MSAtMTA4IGwtNDkgMCAwIDc4CmMxIDE1OSA0OCA0ODIgMTAxIDY5MCAzNCAxMzQgMTE5IDM5NiAxMjUgMzg5IDMgLTMgLTkgLTcyIC0yNiAtMTU1eiIgLz4KCQk8cGF0aCBkPSJNNDcxMCA2NDA2IGwwIC0yNDQgMjMgLTYgYzEyIC0zIDMyIC02IDQ1IC02IGwyMiAwIDAgMjI1IDAgMjI1IDY1IDAKNjUgMCAwIC0yMjUgMCAtMjI1IDI4MyAyIDI4MiAzIDMgMjQ4IDIgMjQ3IC0zOTUgMCAtMzk1IDAgMCAtMjQ0eiIgLz4KCQk8cGF0aCBkPSJNNDQyNCA2MTExIGMtMTggLTUgLTQ4IC0xOCAtNjggLTMwIC0xMzcgLTg1IC0xMjAgLTMwMCAyOSAtMzcwIGw0NgotMjEgLTMgLTUzMyAtMyAtNTMyIC0yMyAtNTggYy0xOCAtNDUgLTU0NSAtODUwIC04NzkgLTEzNDMgLTc2IC0xMTMgLTExMgotMjkxIC04MyAtNDE1IDQxIC0xNzcgMTY5IC0zMTIgMzQwIC0zNTkgNTkgLTE3IDI1OTMgLTE1IDI2NTUgMiAxMTQgMzAgMjMzCjEyMiAyODcgMjI0IDc2IDE0MiA3NyAzNDMgMyA0ODYgLTI4IDU0IC0xMzMgMjEzIC01NzMgODc1IC0xNzYgMjY2IC0zMzEgNTA5Ci0zNDQgNTQwIC0yMyA1OCAtMjMgNjAgLTI2IDU4OCBsLTMgNTMwIDQ1IDE4IGM1MiAyMiAxMDEgODAgMTE3IDE0MSAyNCA5MAotMjMgMTk2IC0xMDYgMjM2IC01NCAyNiAtMTk5IDM1IC0yMDEgMTMgLTEgLTcgLTIgLTE3IC0zIC0yMiAwIC01IC04OCAtNwotMjA4IC0zIC0xNTQgNCAtMjA0IDIgLTE5OSAtNiA0IC03IDE1IC0xMiAyNiAtMTIgMTAgMCA5MiAtMTMgMTgxIC0yOSA5MCAtMTYKMjA2IC0zMyAyNTggLTM3IDEwOSAtNyAxNDEgLTI3IDE0MSAtODYgLTEgLTYwIC00OCAtOTggLTEyNSAtOTggbC00NiAwIDMKLTU5MiAzIC01OTMgMjUgLTcwIGMxOCAtNTIgODAgLTE1NCAyNDEgLTM5NSA0NzYgLTcxNCA2ODkgLTEwNDMgNzEwIC0xMDk3IDE2Ci00NCAyMiAtNzkgMjIgLTE0MyAwIC0xNzQgLTgxIC0yOTMgLTIzNyAtMzQ3IC00OCAtMTcgLTEyNSAtMTggLTEzMzEgLTE4CmwtMTI4MCAwIC02NSAzMSBjLTc5IDM4IC0xMzEgODkgLTE2OCAxNjMgLTI1IDUxIC0yNyA2NiAtMjcgMTcxIDAgOTggMyAxMjIKMjIgMTYzIDEzIDI3IDExNiAxODkgMjI5IDM2MCAxMTQgMTcyIDMwOCA0NjQgNDMyIDY1MCAxMjMgMTg1IDIzNiAzNjMgMjUyCjM5NSA1NCAxMTEgNTUgMTIwIDU1IDc0MiBsMCA1NzUgLTUwIDYgYy0yNyAzIC01OCA5IC02OCAxNCAtMjcgMTEgLTQ5IDYyIC00Mgo5NCAxMCA0OCA0MyA2OSAxMTAgNzMgbDYwIDMgMCA2MCAwIDYwIC01MCAyIGMtMjcgMSAtNjQgLTIgLTgxIC02eiIgLz4KCQk8cGF0aCBkPSJNNDcwMCA1MzY5IGMwIC00MjggLTQgLTcwNyAtMTEgLTc1MiAtMjMgLTE1NyAtNTggLTIzMCAtMjYzIC01NDAKLTg0IC0xMjggLTE5NSAtMjk3IC0yNDggLTM3NyAtNTIgLTgwIC0xNjYgLTI1MyAtMjUzIC0zODUgLTg3IC0xMzIgLTE2OSAtMjYwCi0xODIgLTI4NCAtNDMgLTgyIC0yNiAtMTk3IDM5IC0yNTggNTkgLTU2IC03IC01MyAxMzI3IC01MyBsMTIyOSAwIDUyIDI4IGM5OAo1MSAxMzIgMTc2IDc3IDI4MiAtMjMgNDUgLTI2MSA0MTAgLTYzMyA5NzUgLTIzOCAzNjEgLTI1OCAzOTUgLTMwMiA1NDQgLTE0CjQ5IC0xNyAxMzkgLTIyIDcxNiBsLTUgNjYwIC0xMTUgMTcgYy02MyAxMCAtMTg1IDI5IC0yNzEgNDMgLTIxNyAzNSAtMTk5IDM5Ci0xOTkgLTQ4IDAgLTQxIC00IC0xNTQgLTEwIC0yNTMgLTUgLTk4IC0xNyAtMzEyIC0yNSAtNDc0IC05IC0xNjIgLTIwIC0zNDcKLTI1IC00MTAgLTUgLTYzIC0xMCAtMTQ1IC0xMCAtMTgyIDAgLTM4IC00IC02OCAtOCAtNjggLTggMCAtMjggNTcwIC0zOSAxMTU3CmwtNiAzMzEgLTMwIDYgYy0xNiAzIC0zOCA2IC00OCA2IC0xOCAwIC0xOSAtMjIgLTE5IC02ODF6IG0xMDMyIC0xNDI2IGM5IC0xMAo3NCAtMTA2IDE0NCAtMjE1IDcxIC0xMDggMjAzIC0zMDkgMjk0IC00NDcgMjEwIC0zMTggMjAyIC0zMDUgMjA0IC0zNTMgMSAtMzIKLTUgLTQ1IC0yNyAtNjQgbC0yOCAtMjQgLTEyMTUgMCAtMTIxNSAwIC0yNCAyNSBjLTE5IDE4IC0yNSAzNSAtMjUgNjggMCA0MQoxNyA2OSAyMDYgMzU4IDExNCAxNzMgMjU5IDM5NCAzMjMgNDkxIGwxMTYgMTc4IDYxNiAwIGM1NzQgMCA2MTcgLTEgNjMxIC0xN3oiIC8%2BCgk8L2c%2BCjwvc3ZnPgo%3D&label=powered%20by
+
+[WebAssembly]: https://webassembly.org
+
+[powered by webassembly]:
+https://img.shields.io/badge/webassembly-%23654FF0?style=flat-square&logo=webassembly&logoColor=white&label=powered%20by
