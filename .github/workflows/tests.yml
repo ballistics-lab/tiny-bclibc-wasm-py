@@ -154,8 +154,25 @@ jobs:
           JSC_useJIT: "false"
           COVERAGE_FILE: .coverage.jsc-nojit
 
+      # The same engine through its C API (ctypes, no PyGObject).
+      - name: pytest --wasm-backend jsc (JIT on)
+        if: ${{ !cancelled() }}
+        run: .venv/bin/python -m pytest -v --wasm-backend jsc --cov --cov-report=
+        env:
+          JSC_useJIT: "true"
+          COVERAGE_FILE: .coverage.jsc-capi-jit
+
+      - name: pytest --wasm-backend jsc (JIT off, as on iOS)
+        if: ${{ !cancelled() }}
+        run: .venv/bin/python -m pytest -v --wasm-backend jsc --cov --cov-report=
+        env:
+          JSC_useJIT: "false"
+          COVERAGE_FILE: .coverage.jsc-capi-nojit
+
       - name: Example
-        run: TINY_BCLIBC_HOST=gi-jsc .venv/bin/python examples/basic.py
+        run: |
+          TINY_BCLIBC_HOST=gi-jsc .venv/bin/python examples/basic.py
+          TINY_BCLIBC_HOST=jsc .venv/bin/python examples/basic.py
 
       - name: Upload coverage data
         if: ${{ !cancelled() }}
