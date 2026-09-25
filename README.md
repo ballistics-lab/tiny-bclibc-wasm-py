@@ -89,19 +89,21 @@ The `.s` fields of `Shot`, `Wind`, `Config` and `Request` are typed dataclasses 
 
 | Host | Where | How it is detected |
 |---|---|---|
-| `jscontext` | Pythonista (iOS) | JavaScriptCore's `JSContext` through `objc_util` |
 | `wasmtime` | anywhere with the `wasmtime` package | `import wasmtime` (`uv add tiny-bclibc-wasm[wasmtime]`) |
 | `wasm3` | CPython 3.11+ with [pywasm3](https://github.com/wasm3/pywasm3) | `import wasm3`; install it from git: `uv add "pywasm3 @ git+https://github.com/wasm3/pywasm3"` (its PyPI release predates the API used here) |
+| `jscontext` | Pythonista and PythonIDE (iOS) | JavaScriptCore's `JSContext` through `objc_util` (or `rubicon-objc`, see wasmhost) |
+| `jsc` | Linux, macOS | JavaScriptCore through its C API (ctypes), no PyGObject (`apt install libjavascriptcoregtk-4.1-0`) |
 | `gi-jsc` | Linux | WebKitGTK's JavaScriptCore through PyGObject (`apt install gir1.2-javascriptcoregtk-4.1 python3-gi`) |
 | `node` | anywhere with Node.js | `node` on `PATH` |
 
-With nothing configured, the first host that starts wins, in the order shown. Each host's
+With nothing configured, the first host that starts wins, in the order shown: the in-process runtimes when installed, then the JavaScript engines (on Pythonista nothing above `jscontext` can be installed, so it is the pick there). Each host's
 constructor is its own probe: it fails when its runtime is missing (`objc_util`/`wasmtime`/`gi`
 won't import, `node` isn't on `PATH`, the JS engine has no `WebAssembly`). You can override it
 with `TINY_BCLIBC_HOST=<name>` or `tiny_bclibc.set_host("<name>")`. `tiny_bclibc.host()` reports
 which host is in use.
 
-All the JS hosts run one shared glue snippet, and wasmtime calls the exports directly.
+All of them are backends of [wasmhost](https://github.com/ballistics-lab/py-wasmhost): a call is one batch (allocate
+the input, write it, call the export, read the output), which is one trip to a JavaScript engine.
 `tests/test_hosts.py` checks that every host available on the machine returns bit-identical
 results.
 
@@ -172,7 +174,7 @@ specific module.
 
 ```bash
 uv run pytest                              # everything below, on the automatically picked backend
-uv run pytest --wasm-backend node          # ... on one backend: wasmtime | wasm3 | node | gi-jsc
+uv run pytest --wasm-backend node          # ... on one backend: wasmtime | wasm3 | node | jsc | gi-jsc
 uv run pytest --cov                        # with coverage
 uv run python tests/run_natmod_suite.py    # just the natmod suite, current host/precision
 uv run pyright && uv run ruff check        # types, lint

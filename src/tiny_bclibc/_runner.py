@@ -10,6 +10,7 @@ and returns the output buffer (raising TbwError on a non-zero status).
 
 Hosts (see `default_runner` for how one is picked):
     JSContextRunner         JavaScriptCore via Pythonista's objc_util (iOS). What this exists for.
+    JSCRunner               JavaScriptCore through its C API (ctypes, no PyGObject): the same engine again.
     GIJavaScriptCoreRunner  WebKitGTK's JavaScriptCore via PyGObject (Linux): the same engine,
                             driven the same way -- the desktop rehearsal of the Pythonista setup.
     NodeRunner              a long-lived `node` subprocess.
@@ -36,6 +37,7 @@ __all__ = (
     "AUTO_ORDER",
     "HOSTS",
     "GIJavaScriptCoreRunner",
+    "JSCRunner",
     "JSContextRunner",
     "NodeRunner",
     "TbwError",
@@ -156,6 +158,12 @@ class JSContextRunner(_WasmhostRunner):
     name = "jscontext"
 
 
+class JSCRunner(_WasmhostRunner):
+    """JavaScriptCore through its C API (ctypes), no PyGObject: `apt install libjavascriptcoregtk-4.1-0`."""
+
+    name = "jsc"
+
+
 class GIJavaScriptCoreRunner(_WasmhostRunner):
     """WebKitGTK's JavaScriptCore via PyGObject: `apt install gir1.2-javascriptcoregtk-4.1 python3-gi`."""
 
@@ -186,22 +194,26 @@ HOSTS: Final[dict[str, type[WasmRunner]]] = {
     "jscontext": JSContextRunner,
     "wasmtime": WasmtimeRunner,
     "wasm3": Wasm3Runner,
+    "jsc": JSCRunner,
     "gi-jsc": GIJavaScriptCoreRunner,
     "node": NodeRunner,
 }
 
-# Tried in this order when nothing is chosen explicitly. Each constructor is its own availability
+# Tried in this order when nothing is chosen explicitly: the in-process runtimes when installed (wasmtime, a JIT;
+# wasm3, an interpreter), then the JavaScript engines -- JSContext (iOS; a Mac with rubicon-objc too, where wasmtime
+# still wins), JavaScriptCore through its C API and through PyGObject, then Node. On Pythonista nothing above
+# JSContext can be installed, so it is the pick there. Each constructor is its own availability
 # probe: it raises when its runtime isn't there (ImportError for objc_util/wasmtime/gi, a missing
 # `node` binary, a JS engine without WebAssembly), so "available" means "could actually start".
-AUTO_ORDER: Final[tuple[str, ...]] = ("jscontext", "wasmtime", "wasm3", "gi-jsc", "node")
+AUTO_ORDER: Final[tuple[str, ...]] = ("wasmtime", "wasm3", "jscontext", "jsc", "gi-jsc", "node")
 
 
 def default_runner() -> WasmRunner:
     """Start a host: $TINY_BCLIBC_HOST if set, else the first of AUTO_ORDER that starts.
 
-    AUTO_ORDER puts Pythonista's JSContext first (only exists there), then the in-process runtimes
-    when installed -- wasmtime (JIT), wasm3 (interpreter) -- then WebKitGTK JavaScriptCore (Linux
-    with PyGObject), then Node.
+    AUTO_ORDER puts the in-process runtimes first when installed -- wasmtime (JIT), wasm3 (interpreter)
+    -- then the JavaScript engines: Pythonista's JSContext (nothing above it can be installed there),
+    JavaScriptCore through its C API, or through PyGObject (Linux), then Node.
     """
     choice = os.environ.get("TINY_BCLIBC_HOST", "").lower()
     if choice:

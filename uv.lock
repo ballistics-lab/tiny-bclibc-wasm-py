@@ -517,11 +517,11 @@ wheels = [
 
 [[package]]
 name = "platformdirs"
-version = "4.11.12"
+version = "4.11.13"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/ea/dd/65804b0c2925a1c821a05502ea57517b69a073ff400d25ab9faa3a2cf012/platformdirs-4.11.12.tar.gz", hash = "sha256:e8dc1cb58f1153fd7f61db1374317770baababec2480b37b8f01c6cc25b45267", size = 40016, upload-time = "2026-09-22T01:02:36.973Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/53/0e/7be2983c52622d6c0899300f760e31ba143355cedf1afcb3e65689d5ca85/platformdirs-4.11.13.tar.gz", hash = "sha256:6985eefdc2298693e4ce1fe124645524cb967428eb6384e0ce5b49767e7ea8ba", size = 40415, upload-time = "2026-09-25T04:44:25.484Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/2b/69de6317fbf48865bb12aa56c9cfcfff46b3add0cd45250725d96146dce0/platformdirs-4.11.12-py3-none-any.whl", hash = "sha256:b1ba966ac76153d9985a0787ffab951e7c18416189873d4e4ddb2c8a04a0a254", size = 24976, upload-time = "2026-09-22T01:02:35.742Z" },
+    { url = "https://files.pythonhosted.org/packages/29/a6/76a492f6a937e196641b3abd1588c504c71438e243daf1bebde4d3bb8ee9/platformdirs-4.11.13-py3-none-any.whl", hash = "sha256:228b2283af5c1f32673cdf55271216a52bbd8258cb31374e302ad7bd26cd7513", size = 25054, upload-time = "2026-09-25T04:44:23.975Z" },
 ]
 
 [[package]]
@@ -876,7 +876,7 @@ requires-dist = [
     { name = "py-ballisticcalc", marker = "python_full_version >= '3.11' and extra == 'pybc'", directory = "py-ballisticcalc" },
     { name = "py-ballisticcalc", marker = "python_full_version < '3.11' and extra == 'pybc'", specifier = ">=2.2.10" },
     { name = "typing-extensions", marker = "extra == 'pybc'" },
-    { name = "wasmhost", specifier = ">=0.0.1b2" },
+    { name = "wasmhost", specifier = ">=0.0.2" },
     { name = "wasmtime", marker = "extra == 'wasmtime'" },
 ]
 provides-extras = ["wasmtime", "pybc"]
@@ -991,11 +991,11 @@ wheels = [
 
 [[package]]
 name = "wasmhost"
-version = "0.0.1b2"
+version = "0.0.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/29/5c/7e84bc8a52a496c717158be6ada3aba3ea54a9d5f9b5a1c9b10127829c30/wasmhost-0.0.1b2.tar.gz", hash = "sha256:1f8e70dd267677717910b2dd882d9fd1d14007a256f3daa43880bae2435b67a0", size = 80346, upload-time = "2026-09-24T21:32:04.084Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/97/13e39a8bd23350e39951e501aacd66055b370023d86c2183f684c1d789f7/wasmhost-0.0.2.tar.gz", hash = "sha256:5638a1fc248c9b6e2bbf4f51ebfd19a4d03af1916aa0347b2b869e456ac96834", size = 94021, upload-time = "2026-09-24T22:53:50.845Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e0/8c/5738cdfa766b0b8807da86a7f5d8148606191e259e22b0052ec8e3d570f2/wasmhost-0.0.1b2-py3-none-any.whl", hash = "sha256:666342db92413e4486aa6fb5399c795970cfeb036402381e3e6a4f9e481c8155", size = 32388, upload-time = "2026-09-24T21:32:02.797Z" },
+    { url = "https://files.pythonhosted.org/packages/9a/23/ab4ab955c918d580cfe04fc4b1fd05845e3f64e813a3f52d61a35aa08d44/wasmhost-0.0.2-py3-none-any.whl", hash = "sha256:635fe36f35839f4eb98f3dddc844e3a26ca947ce11f335ee619b7e6d2ca9cf0a", size = 41387, upload-time = "2026-09-24T22:53:49.465Z" },
 ]
 
 [[package]]
