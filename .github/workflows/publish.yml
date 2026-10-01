@@ -95,10 +95,29 @@ jobs:
     needs: build
     if: github.event_name == 'push' || inputs.testpypi
     runs-on: ubuntu-latest
+    # requires manual approval in repo Settings → Environments
     environment: ${{ github.event_name == 'push' && 'pypi' || 'testpypi' }}
     permissions:
+      contents: write
       id-token: write
     steps:
+      - name: Download all artifacts for release
+        if: github.event_name == 'push'
+        uses: actions/download-artifact@v8
+        with:
+          path: artifacts
+
+      - name: Create GitHub release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --repo "${{ github.repository }}" \
+            --title "tiny-bclibc-wasm ${{ github.ref_name }}" \
+            --generate-notes \
+            artifacts/dist/* artifacts/extras/*
+
       - uses: actions/download-artifact@v8
         with:
           name: dist
@@ -116,25 +135,3 @@ jobs:
         with:
           skip-existing: true
           repository-url: https://test.pypi.org/legacy/
-
-  release:
-    needs: build
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/download-artifact@v8
-        with:
-          path: artifacts
-
-      - name: Create GitHub release (draft)
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release create "${{ github.ref_name }}" \
-            --repo "${{ github.repository }}" \
-            --title "tiny-bclibc-wasm ${{ github.ref_name }}" \
-            --generate-notes \
-            --draft \
-            artifacts/dist/* artifacts/extras/*
