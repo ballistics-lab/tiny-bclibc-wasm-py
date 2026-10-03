@@ -1,7 +1,7 @@
 [submodule "bclibc"]
 	path = bclibc
 	url = https://github.com/ballistics-lab/bclibc.git
-	branch = tiny-bclibc-wasm
+	branch = main
 [submodule "py-ballisticcalc"]
 	path = py-ballisticcalc
 	url = https://github.com/o-murphy/py-ballisticcalc
