@@ -4,7 +4,7 @@ name: Tests
 # and runs the suite once per WebAssembly backend, selected with pytest's --wasm-backend (see
 # tests/conftest.py; a runtime that can't start fails the step, it is never skipped):
 #
-#   test:     every OS x CPython oldest/newest (also free-threaded 3.14t) + PyPy, on wasmtime and on Node (both available on
+#   test:     every OS x CPython oldest/newest (also free-threaded 3.14t, 3.15, 3.15t) + PyPy, on wasmtime and on Node (both available on
 #             every runner), and on wasm3 where pywasm3 installs (CPython 3.11+; built from git).
 #   jsc:      WebKitGTK's JavaScriptCore -- the engine behind Pythonista's JSContext -- with its JIT
 #             and without it (iOS apps like Pythonista run it without), as the stand-in for an iOS
@@ -38,7 +38,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
-        python-version: ["3.10", "3.14", "3.14t", "pypy3.11"]
+        python-version: ["3.10", "3.14t", "3.15", "3.15t", "pypy3.11"]
     defaults:
       run:
         shell: bash
