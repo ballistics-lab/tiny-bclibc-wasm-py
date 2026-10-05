@@ -183,7 +183,7 @@ uv run pytest py-ballisticcalc/tests --engine=tiny_bclibc_wasm+tsitouras-dp    #
 
 If the backend passed to `--wasm-backend` can't start, the run stops with an error; the tests are
 never silently skipped. CI (`.github/workflows/tests.yml`) runs the suite on wasmtime and on Node
-on Linux, Windows and macOS with CPython 3.10, CPython 3.14 and PyPy 3.11, and on wasm3 wherever
+on Linux, Windows and macOS with CPython 3.10, 3.14 and 3.15 (plus free-threaded 3.14t and 3.15t) and PyPy 3.11, and on wasm3 wherever
 pywasm3 installs (CPython 3.11+). It also runs it on
 WebKitGTK JavaScriptCore with and without JIT, then combines coverage from all three runtimes and
 uploads it to Codecov. Every leg on Python 3.11+ also runs py-ballisticcalc's suite on the
