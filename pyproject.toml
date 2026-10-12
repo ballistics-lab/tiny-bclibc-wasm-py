@@ -42,7 +42,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
     "Typing :: Typed",
 ]
-dependencies = ["wasmhost>=0.0.3"]
+dependencies = ["wasmhost>=0.1.0"]
 
 [project.optional-dependencies]
 # In-process WebAssembly host for desktops; without it the package uses Node or WebKitGTK
