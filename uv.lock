@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 5
 requires-python = ">=3.10"
 resolution-markers = [
     "python_full_version >= '3.15'",
@@ -899,7 +899,7 @@ requires-dist = [
     { name = "py-ballisticcalc", marker = "python_full_version >= '3.11' and extra == 'pybc'", directory = "py-ballisticcalc" },
     { name = "py-ballisticcalc", marker = "python_full_version < '3.11' and extra == 'pybc'", specifier = ">=2.2.10" },
     { name = "typing-extensions", marker = "extra == 'pybc'" },
-    { name = "wasmhost", specifier = ">=0.0.3" },
+    { name = "wasmhost", specifier = ">=0.1.0" },
     { name = "wasmtime", marker = "extra == 'wasmtime'" },
 ]
 provides-extras = ["wasmtime", "pybc"]
@@ -1015,11 +1015,11 @@ wheels = [
 
 [[package]]
 name = "wasmhost"
-version = "0.0.3"
+version = "0.1.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/67/d8/cf04fcdc02abf5335a43017ddf0a9ce0c390f06e61d2186b8506413a2797/wasmhost-0.0.3.tar.gz", hash = "sha256:4a06880e39b23f6397803f48c6714b29aa98bac7e8ca5d28d9c1008ff30e50fc", size = 116755, upload-time = "2026-10-03T16:56:59.912Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6b/01/9368fd1042c0c6dd5992fdb3761fc372e620058e7ae51b670ec2e9c2d170/wasmhost-0.1.0.tar.gz", hash = "sha256:6a2f72998863cfe4729bde7a6276522072de917a1aa6d3e941677712ca5b505f", size = 4155799, upload-time = "2026-10-12T13:14:38.997Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/99/69/66278a607ed899fe60f04b61c17499b1c1de7088aa89bf5ddc301acaedcd/wasmhost-0.0.3-py3-none-any.whl", hash = "sha256:b52e7fe4185efc1f6fc0e2b16ba8128d40b433d88f0cb801e6ebca31fe558061", size = 49276, upload-time = "2026-10-03T16:56:58.581Z" },
+    { url = "https://files.pythonhosted.org/packages/0c/dd/d6952971cc636baa9126fe7f0c278a161e635e5bfe4cd0bbccbdc3c02c1c/wasmhost-0.1.0-py3-none-any.whl", hash = "sha256:a4926c48dd34c67cf2307416a1b4e3ff45b8926dd98f52e2a874b83dc8af1414", size = 109782, upload-time = "2026-10-12T13:14:37.001Z" },
 ]
 
 [[package]]
