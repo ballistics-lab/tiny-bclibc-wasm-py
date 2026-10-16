@@ -49,8 +49,8 @@ dependencies = ["wasmhost>=0.1.0"]
 # JavaScriptCore, and in Pythonista it uses JSContext (see src/tiny_bclibc/_runner.py).
 wasmtime = ["wasmtime"]
 # py-ballisticcalc engines (tiny_bclibc.pybc, registered below). Full support: py-ballisticcalc 3.x
-# (Python 3.11+; 3.11 resolves to the last 3.0.x, 3.1+ needs 3.12). Partial backward compatibility: on
-# Python 3.10, py-ballisticcalc 2.2.10 (its last release for 3.10). There the engines work, but 3 of 2.x's tests fail, because 2.x expects ZERO/MACH/APEX
+# (Python 3.11+). Partial backward compatibility: on Python 3.10, py-ballisticcalc 2.2.10 (its last
+# release for 3.10). There the engines work, but 3 of 2.x's tests fail, because 2.x expects ZERO/MACH/APEX
 # merged onto a nearby RANGE row, which 3.x (and this adapter) keeps as separate rows.
 pybc = [
     "py-ballisticcalc>=3.0.0b1; python_version >= '3.11'",
@@ -115,8 +115,8 @@ dev = [
 pywasm3 = { git = "https://github.com/wasm3/pywasm3", rev = "fce65fd7fdffd8b6866a4a6f7612a0a5bc28b018" } # Py_mod_gil support (3790b9b) + merge
 # The package and its tests/ from one commit: `uv run pytest py-ballisticcalc/tests --engine=tiny_bclibc_wasm+tsitouras-dp`.
 # Bump it like bclibc: `git -C py-ballisticcalc checkout <tag>`, then `uv lock`.
-# The submodule's py-ballisticcalc needs 3.12+; on 3.10/3.11 the [pybc] extra and dev group resolve from PyPI.
-py-ballisticcalc = { path = "py-ballisticcalc", marker = "python_version >= '3.12'" }
+# The submodule's py-ballisticcalc needs 3.11+; on 3.10 the [pybc] extra resolves from PyPI.
+py-ballisticcalc = { path = "py-ballisticcalc", marker = "python_version >= '3.11'" }
 
 
 [tool.pytest.ini_options]
